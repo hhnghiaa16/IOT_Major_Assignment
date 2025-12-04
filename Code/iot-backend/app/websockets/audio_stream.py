@@ -1,7 +1,10 @@
+<<<<<<< HEAD
 import threading
 from typing import Any
 
 
+=======
+>>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
 from fastapi import APIRouter, HTTPException, Depends, WebSocketDisconnect, status
 from app.middleware.auth import get_current_device, get_current_user
 from pydantic import BaseModel
@@ -11,7 +14,10 @@ from concurrent.futures import ThreadPoolExecutor
 from app.services.STTSystem import STTSystem
 from app.services.mqtt_service import mqtt_service
 from app.services.conversation_service import conversation_service
+<<<<<<< HEAD
 import httpx
+=======
+>>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
 import asyncio
 
 router = APIRouter(prefix="/audio_stream", tags=["Audio Stream"])
@@ -23,8 +29,12 @@ class AudioStreamRequest(BaseModel):
     device_name : str
     virtual_pin : int
 executor_stt = ThreadPoolExecutor(max_workers=4, thread_name_prefix="STTSystem-Worker")
+<<<<<<< HEAD
 list_audio_url = dict[str, str]()
 list_audio_url_lock = threading.Lock()
+=======
+
+>>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
 @router.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     """
@@ -48,27 +58,44 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 # ✅ FIX: Xử lý audio chunk ĐÚNG CÁCH
                 # Sử dụng asyncio.to_thread() để chạy sync function trong thread pool
                 await asyncio.to_thread(stt_system.process_chunk, data)
+<<<<<<< HEAD
             else:
                 # Client ngừng gửi audio, lấy kết quả STT
                 # print(f"{TAG} Client {client_id}: Kết thúc ghi âm, đang lấy kết quả...")
+=======
+                
+                if chunk_count % 10 == 0:
+                    print(f"{TAG} Client {client_id}: Đã nhận {chunk_count} chunks")
+            else:
+                # Client ngừng gửi audio, lấy kết quả STT
+                print(f"{TAG} Client {client_id}: Kết thúc ghi âm, đang lấy kết quả...")
+>>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                 
                 text = stt_system.get_result_text()
                 
                 if not text or text.strip() == "":
                     text = "Không nhận diện được giọng nói"
                 
+<<<<<<< HEAD
                 print(f"{TAG} STT Result: {text} + chunk_count: {chunk_count}")
+=======
+                print(f"{TAG} STT Result: {text}")
+>>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                 
                 # Gửi kết quả về client
                 await websocket.send_text(text)
                 await websocket.close()
                 result = await conversation_service.chat(client_id, text)
+<<<<<<< HEAD
                 print(f"{TAG} [Client: {client_id}] Result: {result['response']}")
                 final_audio_url = await get_audio_url_async(result['response'])
                 with list_audio_url_lock:
                     list_audio_url[client_id] = final_audio_url.replace("https://", "http://")
                     mqtt_service.publish_message_NC(client_id, "AU:ON")
                 print(f"{TAG} [Client: {client_id}] Final Audio URL: {final_audio_url}")
+=======
+                print(f"{TAG} [Client: {client_id}] Result: {result}")
+>>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                 return
                 
     except WebSocketDisconnect:
@@ -77,12 +104,17 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         # Lấy kết quả cuối cùng nếu có
         final_transcript = stt_system.get_result_text()
         if final_transcript:
+<<<<<<< HEAD
             print(f"{TAG} WEB SOCKET DISCONNECT FINAL TRANSCRIPT: {final_transcript}")
+=======
+            print(f"{TAG} FINAL TRANSCRIPT: {final_transcript}")
+>>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
     
     except Exception as e:
         print(f"{TAG} ERROR: Lỗi với client {client_id}: {e}")
         import traceback
         traceback.print_exc()
+<<<<<<< HEAD
         try:
             await websocket.close()
         except:
@@ -162,3 +194,10 @@ async def get_audio_url_endpoint(client_id: str):
             "success": True,
             "audio_url": final_audio_url
         }
+=======
+        
+        try:
+            await websocket.close()
+        except:
+            pass
+>>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701

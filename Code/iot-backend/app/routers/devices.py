@@ -269,7 +269,11 @@ def config_device(
                         "pin_label": pin.pin_label,
                         "pin_type": pin.pin_type.value,
                         "data_type": pin.data_type.value,
+<<<<<<< HEAD
                         "ai_keywords": pin.ai_keywords 
+=======
+                        "ai_keywords": pin.ai_keywords if pin.pin_type.value == "OUTPUT" else ""
+>>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                     },
                     filters={"device_token": device_Config.device_token, "virtual_pin": pin.virtual_pin}
                 )
@@ -283,7 +287,11 @@ def config_device(
                         "pin_label": pin.pin_label,
                         "pin_type": pin.pin_type.value,
                         "data_type": pin.data_type.value,
+<<<<<<< HEAD
                         "ai_keywords": pin.ai_keywords 
+=======
+                        "ai_keywords": pin.ai_keywords if pin.pin_type.value == "OUTPUT" else ""
+>>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                     }
                 )
             if not result:
