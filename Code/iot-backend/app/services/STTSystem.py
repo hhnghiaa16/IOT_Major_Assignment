@@ -14,11 +14,8 @@ from silero_vad import load_silero_vad, get_speech_timestamps, VADIterator
 import io
 from scipy import signal
 import torch
-<<<<<<< HEAD
 import httpx
 from urllib.parse import urlparse, urlunparse, quote
-=======
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
 
 class STTSystem: 
     def __init__(self, 
@@ -29,14 +26,10 @@ class STTSystem:
                  groq_api_key: Optional[str] = None,
                  language: str = "vi",
                  max_workers: int = 3,
-<<<<<<< HEAD
                  token_master : str = None,
                  proxy_url: Optional[str] = None,
                  proxy_username: Optional[str] = None,
                  proxy_password: Optional[str] = None
-=======
-                 token_master : str = None
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                ):
         """
         Khởi tạo STTSystem
@@ -60,7 +53,6 @@ class STTSystem:
         api_key = groq_api_key or os.getenv("GROQ_API_KEY")
         if not api_key:
             raise ValueError("Groq API key is required. Set GROQ_API_KEY environment variable or pass groq_api_key parameter.")
-<<<<<<< HEAD
         env_proxy_url = os.getenv("PROXY_URL")
         env_proxy_user = os.getenv("PROXY_USERNAME")
         env_proxy_pass = os.getenv("PROXY_PASSWORD")
@@ -71,9 +63,6 @@ class STTSystem:
 
         proxy_client = self._build_proxy_client(self.proxy_url, proxy_user, proxy_pass)
         self.groq_client = Groq(api_key=api_key, http_client=proxy_client)
-=======
-        self.groq_client = Groq(api_key=api_key)
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
         
         # Khởi tạo Silero VAD
         print("Đang tải Silero VAD model...")
@@ -116,7 +105,6 @@ class STTSystem:
         nyquist = self.sample_rate / 2
         low_cutoff = 80 / nyquist
         self.filter_b, self.filter_a = signal.butter(3, low_cutoff, btype='high')
-<<<<<<< HEAD
 
     def _build_proxy_client(self, proxy_url: Optional[str], username: Optional[str], password: Optional[str]) -> httpx.Client:
         """
@@ -145,8 +133,6 @@ class STTSystem:
             return httpx.Client(transport=transport, timeout=30.0, verify=False)
         except TypeError:
             return httpx.Client(timeout=30.0, verify=False)
-=======
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
     
     def _normalize_audio(self, audio_data: np.ndarray) -> np.ndarray:
         """
@@ -539,10 +525,7 @@ class STTSystem:
                     language=self.language,
                     temperature=0.0
                 )
-<<<<<<< HEAD
                 # transcription = "test"
-=======
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
             
             # Lấy text từ transcription
             text = transcription.text if hasattr(transcription, 'text') else str(transcription)

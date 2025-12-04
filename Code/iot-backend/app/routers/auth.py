@@ -2,11 +2,7 @@
 # app/routers/auth.py
 from fastapi import APIRouter, HTTPException, Depends, status
 from datetime import timedelta
-<<<<<<< HEAD
 from app.schemas.auth import UserRegister, UserLogin, Token, UserResponse, UserUpdate
-=======
-from app.schemas.auth import UserRegister, UserLogin, Token, UserResponse
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
 from app.security import verify_password, get_password_hash, create_access_token
 from app.database import db
 from app.config import settings
@@ -152,7 +148,6 @@ def get_current_user_info(current_user: dict = Depends(get_current_user)):
         type=current_user["type"]
     )
 
-<<<<<<< HEAD
 @router.get("/update_user_info", response_model=dict)
 def update_user_info(update_data : UserUpdate, current_user: dict = Depends(get_current_user)):
     """Cập nhật thông tin user hiện tại"""
@@ -180,5 +175,3 @@ def update_user_info(update_data : UserUpdate, current_user: dict = Depends(get_
             "success": False,
             "message": f"Cập nhật thông tin user thất bại: {str(e)}"
         }
-=======
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701

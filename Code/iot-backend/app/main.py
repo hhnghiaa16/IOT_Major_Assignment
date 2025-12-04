@@ -1,10 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-<<<<<<< HEAD
 from app.routers import auth, devices, mqtt, websocket , sensors , dashborad, ai_chat, OTA
-=======
-from app.routers import auth, devices, mqtt, websocket , sensors , dashborad, ai_chat
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
 from app.websockets import audio_stream
 from app.services.mqtt_service import mqtt_service
 
@@ -35,10 +31,7 @@ app.include_router(sensors.router)
 app.include_router(dashborad.router)
 app.include_router(audio_stream.router)
 app.include_router(ai_chat.router)
-<<<<<<< HEAD
 app.include_router(OTA.router)
-=======
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
 @app.get("/")
 async def root():
     return {

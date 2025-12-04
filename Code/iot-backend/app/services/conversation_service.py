@@ -12,10 +12,7 @@ from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from collections import defaultdict
 from app.database import db
-<<<<<<< HEAD
 from openai import OpenAI
-=======
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
 TAG = "CONVERSATION_SERVICE"
 
 class ConversationService:
@@ -26,7 +23,6 @@ class ConversationService:
     
     def __init__(self):
         # Khởi tạo Groq client
-<<<<<<< HEAD
         api_key = os.getenv("OPENROUTER_API_KEY")
         self.client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
@@ -34,7 +30,7 @@ class ConversationService:
             # "https://openrouter.ai/api/v1",
             api_key=api_key
         )
-        self.model = "x-ai/grok-4.1-fast:free"
+        self.model = "z-ai/glm-4.5-air:free"
        
         # cua siliconflow
         # "THUDM/GLM-4-9B-0414"
@@ -43,12 +39,6 @@ class ConversationService:
         # "x-ai/grok-4.1-fast:free" vip pro max nhat
         # "qwen/qwen-2.5-72b-instruct"
         # Groq(api_key=api_key)
-=======
-        api_key = os.getenv("GROQ_API_KEY", "gsk_xxxxxxx")
-        self.client = Groq(api_key=api_key)
-        self.model = "moonshotai/kimi-k2-instruct-0905"
-        
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
         # Lưu trữ conversation history theo client_id
         # Format: {client_id: {"history": [...], "last_activity": datetime, "metadata": {...}}}
         self.conversations: Dict[str, dict] = {}
@@ -199,7 +189,6 @@ Quy tắc khác:
                 Bạn là trợ lý AI với Style nói: {config_ai['style']}.
                 Tên bạn là {config_ai['name']}.
                 Mô tả: {config_ai['describe']}.
-<<<<<<< HEAD
                 Token verify của thiết bị master là : {client_id}
                 QUAN TRỌNG – QUY TẮC GỌI TOOL:
                 0. Khi người dùng yêu cầu điều khiển thiết bị , thì bạn phải so sánh yêu cầu của người dùng với danh sách AI key word để xác định chính xác thiết bị chỉ định .
@@ -217,40 +206,6 @@ Quy tắc khác:
                 - Khi có tool_calls, content nên để trống hoặc null.
                 - Bắt buộc phải nói tiếng việt chỉ được phép dùng kí tự từ A-Z, a-z, 0-9 và khoảng trắng , không dùng kí tự đặc biệt.
                 - chỉ được trả lời bằng ngôn ngữ cuộc sống , không đưa các mã , hình ảnh , video , âm thanh , kí tự không thuộc ngôn ngữ cuộc sống vàovào
-=======
-                QUAN TRỌNG – QUY TẮC GỌI TOOL:
-                1. Khi user yêu cầu một hành động có thể thực hiện qua tool (ví dụ: bật/tắt thiết bị, mở cửa…), PHẢI tạo tool_call JSON tương ứng và KHÔNG chỉ trả lời bằng lời.
-                2. Nếu user chưa nêu rõ target, hỏi để xác nhận trước khi sinh tool_call.
-                3. Sau khi tool được thực thi, mới trả lời người dùng dựa trên kết quả từ tool.
-                4. Nếu user yêu cầu nhiều hành động liên tiếp, xử lý lần lượt, từng tool một.
-                5. Luôn kiểm tra conversation history để biết trạng thái thiết bị, nhưng nếu user muốn thực hiện lại, PHẢI gọi lại tool.
-                6. Nếu không có tool phù hợp với yêu cầu của user, chỉ trả lời bằng text.
-                QUY TẮC TRẢ LỜI:
-                - Trả lời ngắn gọn, dễ hiểu.
-                - Giữ phong cách {config_ai['style']}.
-                - Khi có tool_calls, content nên để trống hoặc null.
-                
-                VÍ DỤ VỀ CÁCH PHẢN HỒI KHI USER YÊU CẦU THỰC HIỆN TOOL:
-                
-                User: "bật đèn nhà"
-                → Bạn PHẢI trả về tool_call với:
-                   - name: "turn_on_device_home"
-                   - arguments: {{}} (rỗng vì function không có tham số)
-                   - content: "" (để trống khi có tool_calls)
-                
-                User: "bật đèn bếp"
-                → Bạn PHẢI trả về tool_call với:
-                   - name: "turn_on_device_kitchen"
-                   - arguments: {{}}
-                   - content: ""
-                
-                User: "mở cửa"
-                → Bạn PHẢI trả về tool_call với:
-                   - name: "open_the_door"
-                   - arguments: {{}}
-                   - content: ""
-                
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                 LƯU Ý: Khi response có tool_calls, finish_reason sẽ là 'tool_calls' và content sẽ trống. 
                 Sau khi tool được thực thi, bạn mới trả lời người dùng dựa trên kết quả từ tool.
             """
@@ -268,15 +223,9 @@ Quy tắc khác:
             # Lấy danh sách tools từ registry
             tools = registry.get_schemas()
             
-<<<<<<< HEAD
             # print(f"{TAG} [Client: {client_id}] User: {user_message}")
             # print(f"{TAG} [Client: {client_id}] Available tools: {len(tools)}")
             # print(f"{TAG} [Client: {client_id}] History messages: {len(conversation_history)}")
-=======
-            print(f"{TAG} [Client: {client_id}] User: {user_message}")
-            print(f"{TAG} [Client: {client_id}] Available tools: {len(tools)}")
-            print(f"{TAG} [Client: {client_id}] History messages: {len(conversation_history)}")
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
             
             # Lưu user message vào history
             conversation_history.append({"role": "user", "content": user_message})
@@ -284,29 +233,17 @@ Quy tắc khác:
             # Track tất cả tool calls
             all_tool_calls = []
             iteration = 0
-<<<<<<< HEAD
             # print(f"{TAG} [Client: {client_id}] Tool schemas: {tools}")
             while True:
                 iteration += 1
                 # print(f"{TAG} [Client: {client_id}] Iteration {iteration}")
-=======
-            print(f"{TAG} [Client: {client_id}] Tool schemas: {tools}")
-            while True:
-                iteration += 1
-                print(f"{TAG} [Client: {client_id}] Iteration {iteration}")
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                 # messagesss = [
                 #     {"role": "system", "content": "Bạn là trợ lý AI, hãy truy vấn và in dữ liệu người dùng.và luôn thực hiện lần lượt các công việc mà người dùng yêu cầu. Không thựcc hiện cùng một lúc "},
                 #     {"role": "user", "content": "bật đèn nhà sau đó là đền bếp , tiếp đến là mở cửa cho tôii "}
                 # ]
                 # Gọi Groq API
-<<<<<<< HEAD
                 # print(f"{TAG} [Client: {client_id}] Messages: {len(messages)} messages")
                 # print(f"{TAG} [Client: {client_id}] Available tools: {len(tools)} tools")
-=======
-                print(f"{TAG} [Client: {client_id}] Messages: {len(messages)} messages")
-                print(f"{TAG} [Client: {client_id}] Available tools: {len(tools)} tools")
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                 if tools:
                     print(f"{TAG} [Client: {client_id}] Tool names: {[t['function']['name'] for t in tools]}")
                 
@@ -316,14 +253,9 @@ Quy tắc khác:
                     # temperature=0.2,
                     tools=tools if tools else None,  # Chỉ gửi tools nếu có
                     tool_choice="auto" if tools else None,  # Chỉ set tool_choice nếu có tools
-<<<<<<< HEAD
                     extra_body={"reasoning": {"enabled": False}}
                 )
                 # print(f"{TAG} [Client: {client_id}] Response: {response}")
-=======
-                )
-                print(f"{TAG} [Client: {client_id}] Response: {response}")
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                 
                 assistant_message = response.choices[0].message
                 conversation_history.append({
@@ -334,11 +266,7 @@ Quy tắc khác:
                     "role": "assistant",
                     "content": assistant_message.content,
                 })
-<<<<<<< HEAD
                 # print(f"{TAG} [Client: {client_id}] Assistant message: {assistant_message.content}")
-=======
-                print(f"{TAG} [Client: {client_id}] Assistant message: {assistant_message.content}")
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                 # Kiểm tra xem AI có muốn gọi tool không
                 if hasattr(assistant_message, "tool_calls") and assistant_message.tool_calls:
                     print(f"{TAG} [Client: {client_id}] AI muốn gọi {len(assistant_message.tool_calls)} tool(s)")
@@ -346,15 +274,11 @@ Quy tắc khác:
                     # Thực thi từng tool call
                     for tool_call in assistant_message.tool_calls:
                         tool_name = tool_call.function.name
-<<<<<<< HEAD
                         # Xử lý trường hợp arguments là None hoặc rỗng
                         if tool_call.function.arguments is None or tool_call.function.arguments == "":
                             tool_args = {}
                         else:
                             tool_args = json.loads(tool_call.function.arguments)
-=======
-                        tool_args = json.loads(tool_call.function.arguments)
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
                         
                         print(f"{TAG} [Client: {client_id}] Executing: {tool_name}({tool_args})")
                         

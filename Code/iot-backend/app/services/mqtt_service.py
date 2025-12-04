@@ -317,7 +317,6 @@ class MQTTService:
         if not client_id :
             print(TAG + f" Client id khong ton tai")
             return False
-<<<<<<< HEAD
         
         # Kiểm tra broker đã khởi động chưa
         if not self.broker or not self.running:
@@ -366,20 +365,6 @@ class MQTTService:
             print(TAG + f"❌ Lỗi khi gửi messsage NC {client_id}: {str(e)}")
             return "Lỗi khi gửi messsage NC "
 
-=======
-        try :
-            # Tạo MQTT PUBLISH packet0-
-            #CT/{device_token}/virtualpin 
-            topic = TOPIC_CONTRO + client_id +"/"+str(virtualPin)
-            publish_packet = self.broker.create_publish_packet(topic, message)
-            self.broker.clients.get(client_id).send(publish_packet)
-            print(TAG + f"📤 Đã publish: {topic} -> {message}")
-            return True
-            
-        except Exception as e:
-            print(TAG + f"❌ Lỗi khi gửi messsage CT {client_id}" + str(e))
-            return False
->>>>>>> 5f2a5cdc6197e069a11939049c6819ea856af701
 
     def publish_message_fromHOST(self, topic: str, message: str):
         """Publish message qua MQTT (từ HTTP API)"""
