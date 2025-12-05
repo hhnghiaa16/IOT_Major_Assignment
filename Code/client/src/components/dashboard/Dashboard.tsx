@@ -145,9 +145,8 @@ const Dashboard: React.FC = () => {
                     <span className="block-pin">Pin {block.virtual_pin}</span>
                   </div>
                   <button
-                    className={`toggle-button ${normalizeValue(block.value) === 1 ? 'active' : ''} ${
-                      togglingBlockId === block.id ? 'loading' : ''
-                    }`}
+                    className={`toggle-button ${normalizeValue(block.value) === 1 ? 'active' : ''} ${togglingBlockId === block.id ? 'loading' : ''
+                      }`}
                     onClick={() => toggleButton(block)}
                     disabled={togglingBlockId === block.id}
                   >

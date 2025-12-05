@@ -9,6 +9,7 @@ import Header from './Header';
 import Dashboard from './dashboard/Dashboard';
 import Login from './Login';
 import MyDevices from './MyDevices';
+import ChatPage from './ChatPage';
 import { useAuth } from '../hooks/useAuth';
 
 const App: React.FC = () => {
@@ -38,9 +39,11 @@ const App: React.FC = () => {
 
       <div className="container">
         {currentPage === 'MyDevices' ? (
-          <MyDevices key={`my-devices-${pageKey}`} onClose={() => {}} />
+          <MyDevices key={`my-devices-${pageKey}`} onClose={() => { }} />
         ) : currentPage === 'Dashboard' ? (
           <Dashboard key={`dashboard-${pageKey}`} />
+        ) : currentPage === 'Chat' ? (
+          <ChatPage key={`chat-${pageKey}`} />
         ) : null}
       </div>
     </div>
