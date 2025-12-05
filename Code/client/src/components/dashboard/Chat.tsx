@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import './Chat.css';
+import '../../styles/Chat.css';
 
 interface Message {
     role: 'user' | 'assistant' | 'system';
@@ -22,22 +22,6 @@ const Chat: React.FC = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [clientId, setClientId] = useState<string>('');
 
-    // Initialize client_id
-    useEffect(() => {
-        let storedClientId = localStorage.getItem('chat_client_id');
-        if (!storedClientId) {
-            storedClientId = 'user_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('chat_client_id', storedClientId);
-        }
-        setClientId(storedClientId);
-        fetchHistory(storedClientId);
-    }, []);
-
-    // Auto-scroll to bottom
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isOpen]);
-
     const fetchHistory = async (id: string) => {
         try {
             const response = await fetch(`http://localhost:8000/ai/conversation/${id}`);
@@ -53,6 +37,23 @@ const Chat: React.FC = () => {
             console.error('Failed to fetch history:', error);
         }
     };
+
+    // Initialize client_id
+    useEffect(() => {
+        let storedClientId = localStorage.getItem('chat_client_id');
+        if (!storedClientId) {
+            storedClientId = 'user_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('chat_client_id', storedClientId);
+        }
+        setClientId(storedClientId);
+        fetchHistory(storedClientId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Auto-scroll to bottom
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages, isOpen]);
 
     const handleSendMessage = async () => {
         if (!inputValue.trim()) return;
@@ -92,9 +93,15 @@ const Chat: React.FC = () => {
                 setMessages(prev => [...prev, assistantMessage]);
             } else {
                 console.error('Failed to send message');
+                // Restore user message on error
+                setMessages(prev => prev.slice(0, -1));
+                setInputValue(userMessage.content);
             }
         } catch (error) {
             console.error('Error sending message:', error);
+            // Restore user message on error
+            setMessages(prev => prev.slice(0, -1));
+            setInputValue(userMessage.content);
         } finally {
             setIsLoading(false);
         }

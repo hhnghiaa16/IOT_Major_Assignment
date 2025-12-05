@@ -25,7 +25,6 @@ const App: React.FC = () => {
   if (!isLoggedIn) {
     return (
       <div className="app">
-        <Header currentPage={currentPage} onNavigate={setCurrentPage} />
         <div className="container">
           <Login onLogin={login} />
         </div>

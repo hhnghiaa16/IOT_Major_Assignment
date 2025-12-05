@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import './ChatPage.css';
+import '../styles/ChatPage.css';
 
 interface Message {
     role: 'user' | 'assistant' | 'system';
@@ -27,22 +27,6 @@ const ChatPage: React.FC = () => {
     const [aiStyle, setAiStyle] = useState('Thân thiện, nhiệt tình');
     const [systemPrompt, setSystemPrompt] = useState('Bạn là một trợ lý AI hữu ích.');
 
-    // Initialize client_id
-    useEffect(() => {
-        let storedClientId = localStorage.getItem('chat_client_id');
-        if (!storedClientId) {
-            storedClientId = 'user_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('chat_client_id', storedClientId);
-        }
-        setClientId(storedClientId);
-        fetchHistory(storedClientId);
-    }, []);
-
-    // Auto-scroll to bottom
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-
     const fetchHistory = async (id: string) => {
         try {
             const response = await fetch(`http://localhost:8000/ai/conversation/${id}`);
@@ -57,6 +41,23 @@ const ChatPage: React.FC = () => {
             console.error('Failed to fetch history:', error);
         }
     };
+
+    // Initialize client_id
+    useEffect(() => {
+        let storedClientId = localStorage.getItem('chat_client_id');
+        if (!storedClientId) {
+            storedClientId = 'user_' + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem('chat_client_id', storedClientId);
+        }
+        setClientId(storedClientId);
+        fetchHistory(storedClientId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Auto-scroll to bottom
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
     const handleSendMessage = async () => {
         if (!inputValue.trim()) return;
@@ -96,9 +97,15 @@ const ChatPage: React.FC = () => {
                 setMessages(prev => [...prev, assistantMessage]);
             } else {
                 console.error('Failed to send message');
+                // Restore user message on error
+                setMessages(prev => prev.slice(0, -1));
+                setInputValue(userMessage.content);
             }
         } catch (error) {
             console.error('Error sending message:', error);
+            // Restore user message on error
+            setMessages(prev => prev.slice(0, -1));
+            setInputValue(userMessage.content);
         } finally {
             setIsLoading(false);
         }

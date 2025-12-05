@@ -12,7 +12,10 @@
   flex: 1;
   width: 100%;
   gap: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  z-index: 1;
   /* Prevent body scroll */
 }
 
