@@ -1,38 +1,32 @@
+/**
+ * App Component
+ * Main application component with routing logic
+ */
+
 import React, { useState, useEffect } from 'react';
 import '../styles/App.css';
 import Header from './Header';
 import Dashboard from './dashboard/Dashboard';
 import Login from './Login';
 import MyDevices from './MyDevices';
+import { useAuth } from '../hooks/useAuth';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('MyDevices');
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [pageKey, setPageKey] = useState<number>(0);
+  const { isLoggedIn, login, logout } = useAuth();
 
+  // Force remount when page changes
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    setIsLoggedIn(Boolean(token));
-  }, []);
-
-  // Force remount khi chuyển trang
-  useEffect(() => {
-    setPageKey(prev => prev + 1);
+    setPageKey((prev) => prev + 1);
   }, [currentPage]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user');
-    setIsLoggedIn(false);
-  };
-
-  // TODO: bo tam thoi ! ra khoi isLoggedIn de debug
   if (!isLoggedIn) {
     return (
       <div className="app">
         <Header currentPage={currentPage} onNavigate={setCurrentPage} />
         <div className="container">
-          <Login onLogin={() => setIsLoggedIn(true)} />
+          <Login onLogin={login} />
         </div>
       </div>
     );
@@ -40,11 +34,7 @@ const App: React.FC = () => {
 
   return (
     <div className="app">
-      <Header 
-        currentPage={currentPage} 
-        onNavigate={setCurrentPage} 
-        onLogout={handleLogout}
-      />
+      <Header currentPage={currentPage} onNavigate={setCurrentPage} onLogout={logout} />
 
       <div className="container">
         {currentPage === 'MyDevices' ? (

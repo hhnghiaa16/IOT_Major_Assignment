@@ -1,11 +1,6 @@
 import React from 'react';
 import '../styles/Header.css';
-
-interface HeaderProps {
-  currentPage: string;
-  onNavigate: (page: string) => void;
-  onLogout?: () => void;
-}
+import type { HeaderProps } from '../types';
 
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogout }) => {
   return (

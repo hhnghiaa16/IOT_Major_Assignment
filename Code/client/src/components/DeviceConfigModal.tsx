@@ -1,101 +1,30 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * DeviceConfigModal Component (Dumb Component)
+ * Pure UI component for device pin configuration
+ */
+
+import React, { useState } from 'react';
 import '../styles/DeviceConfigModal.css';
-
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-
-export interface ConfigPin {
-  device_token?: string;
-  virtual_pin: number;
-  pin_label: string;
-  pin_type: 'INPUT' | 'OUTPUT';
-  data_type: 'string' | 'float' | 'integer' | 'boolean' | 'datetime' | 'json';
-  ai_keywords?: string;
-}
-
-interface DeviceConfigModalProps {
-  device: {
-    id: number;
-    device_name: string;
-    device_token?: string;
-    device_access_token?: string;
-  };
-  onClose: () => void;
-}
+import { useDeviceConfig } from '../hooks/useDeviceConfig';
+import { getDataTypeLabel, getPinTypeLabel } from '../utils/formatters';
+import type { DeviceConfigModalProps, DataType, PinType } from '../types';
 
 const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }) => {
-  const [configPins, setConfigPins] = useState<ConfigPin[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { configPins, loading, error, loadConfigPins, addPin, deletePin } = useDeviceConfig({
+    deviceToken: device.device_token,
+  });
+
   const [showAddPinForm, setShowAddPinForm] = useState(false);
-  
   const [newPin, setNewPin] = useState({
     virtual_pin: 1,
     pin_label: '',
-    pin_type: 'OUTPUT' as 'INPUT' | 'OUTPUT',
-    data_type: 'float' as 'string' | 'float' | 'integer' | 'boolean' | 'datetime' | 'json',
+    pin_type: 'OUTPUT' as PinType,
+    data_type: 'float' as DataType,
     ai_keywords: '',
   });
-  
   const [addPinLoading, setAddPinLoading] = useState(false);
   const [addPinError, setAddPinError] = useState<string | null>(null);
 
-  // Load config pins
-  const loadConfigPins = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        setError('Chưa đăng nhập');
-        return;
-      }
-
-      const deviceToken =  device.device_token || null;
-      if (!deviceToken) {
-        setError('Không tìm thấy device token');
-        return;
-      }
-
-      const res = await fetch(`${API_BASE}/devices/getConfigPin?device_token=${deviceToken}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await res.json();
-
-      // Xử lý trường hợp không có config pins (API trả về success: false với message "Config pin not found")
-      if (!res.ok || !data.success) {
-        if (data.message && (data.message.includes('not found') || data.message.includes('Config pin not found'))) {
-          // Không có config pins, hiển thị danh sách rỗng
-          setConfigPins([]);
-          setError(null);
-          return;
-        }
-        setError(data.message || 'Không thể tải danh sách virtual pins');
-        setConfigPins([]);
-        return;
-      }
-
-      // Thành công, hiển thị danh sách config pins
-      setConfigPins(data.config_pins || []);
-      setError(null);
-    } catch (err: any) {
-      console.error('Error loading config pins:', err);
-      setError(err?.message || 'Lỗi khi tải danh sách virtual pins');
-      setConfigPins([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadConfigPins();
-  }, [device]);
-
-  // Handle add new pin
   const handleAddPin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddPinError(null);
@@ -115,66 +44,16 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
       return;
     }
 
-    // Kiểm tra virtual_pin đã tồn tại chưa
-    if (configPins.some(pin => pin.virtual_pin === newPin.virtual_pin)) {
-      setAddPinError(`Virtual pin ${newPin.virtual_pin} đã được sử dụng`);
-      return;
-    }
-
     setAddPinLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        setAddPinError('Chưa đăng nhập');
-        return;
-      }
-
-      const deviceToken =  device.device_token || null;
-      if (!deviceToken) {
-        setAddPinError('Không tìm thấy device token');
-        return;
-      }
-
-      // Tạo mảng pins bao gồm tất cả pins hiện có và pin mới
-      const allPins = [
-        // Thêm tất cả pins hiện có
-        ...configPins.map(pin => ({
-          virtual_pin: pin.virtual_pin,
-          pin_label: pin.pin_label,
-          pin_type: pin.pin_type,
-          data_type: pin.data_type,
-          ai_keywords: pin.ai_keywords || '',
-        })),
-        // Thêm pin mới
-        {
-          virtual_pin: newPin.virtual_pin,
-          pin_label: newPin.pin_label.trim(),
-          pin_type: newPin.pin_type,
-          data_type: newPin.data_type,
-          ai_keywords: newPin.pin_type === 'OUTPUT' ? newPin.ai_keywords.trim() : '',
-        },
-      ];
-
-      const res = await fetch(`${API_BASE}/devices/configPin`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          device_token: deviceToken,
-          pins: allPins,
-        }),
+      await addPin({
+        virtual_pin: newPin.virtual_pin,
+        pin_label: newPin.pin_label.trim(),
+        pin_type: newPin.pin_type,
+        data_type: newPin.data_type,
+        ai_keywords: newPin.pin_type === 'OUTPUT' ? newPin.ai_keywords.trim() : undefined,
       });
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        setAddPinError(data.message || 'Thêm virtual pin thất bại');
-        return;
-      }
-
-      // Reset form and reload pins
       setNewPin({
         virtual_pin: 1,
         pin_label: '',
@@ -183,72 +62,21 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
         ai_keywords: '',
       });
       setShowAddPinForm(false);
-      await loadConfigPins();
       alert('Thêm virtual pin thành công!');
-    } catch (err: any) {
-      setAddPinError(err?.message || 'Lỗi khi thêm virtual pin');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Lỗi khi thêm virtual pin';
+      setAddPinError(errorMessage);
     } finally {
       setAddPinLoading(false);
     }
   };
 
-  // Handle delete pin
   const handleDeletePin = async (virtualPin: number) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa virtual pin ${virtualPin}?`)) {
-      return;
-    }
-
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        alert('Chưa đăng nhập');
-        return;
-      }
-
-      const deviceToken = device.device_token || null;
-      if (!deviceToken) {
-        alert('Không tìm thấy device token');
-        return;
-      }
-
-      const res = await fetch(`${API_BASE}/devices/deleteConfigPin?device_token=${deviceToken}&virtual_pin=${virtualPin}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        alert(data.message || 'Xóa virtual pin thất bại');
-        return;
-      }
-
-      await loadConfigPins();
-      alert(`Đã xóa virtual pin ${virtualPin} thành công`);
-    } catch (err: any) {
-      alert(err?.message || 'Lỗi khi xóa virtual pin');
+      await deletePin(virtualPin);
+    } catch {
+      // Error handled by hook
     }
-  };
-
-  const getDataTypeLabel = (type: string) => {
-    const labels: { [key: string]: string } = {
-      'string': 'String',
-      'float': 'Float',
-      'integer': 'Integer',
-      'boolean': 'Boolean',
-      'datetime': 'Datetime',
-      'json': 'JSON',
-    };
-    return labels[type] || type;
-  };
-
-  const getPinTypeLabel = (type: string) => {
-    if (type === 'INPUT') return 'INPUT (Từ thiết bị lên)';
-    if (type === 'OUTPUT') return 'OUTPUT (Từ server xuống)';
-    return type;
   };
 
   return (
@@ -256,7 +84,9 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
       <div className="device-config-modal" onClick={(e) => e.stopPropagation()}>
         <div className="device-config-modal-header">
           <h2>Cấu hình Virtual Pin - {device.device_name}</h2>
-          <button className="modal-close-btn" onClick={onClose}>×</button>
+          <button className="modal-close-btn" onClick={onClose}>
+            ×
+          </button>
         </div>
 
         <div className="device-config-modal-content">
@@ -265,7 +95,9 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
           ) : error ? (
             <div className="error-state">
               <p>{error}</p>
-              <button className="btn" onClick={loadConfigPins}>Thử lại</button>
+              <button className="btn" onClick={loadConfigPins}>
+                Thử lại
+              </button>
             </div>
           ) : (
             <>
@@ -316,10 +148,7 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
 
               {!showAddPinForm ? (
                 <div className="add-pin-button-container">
-                  <button
-                    className="btn-add-pin"
-                    onClick={() => setShowAddPinForm(true)}
-                  >
+                  <button className="btn-add-pin" onClick={() => setShowAddPinForm(true)}>
                     + Thêm Virtual Pin mới
                   </button>
                 </div>
@@ -334,7 +163,9 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
                         min="1"
                         max="30"
                         value={newPin.virtual_pin}
-                        onChange={(e) => setNewPin({ ...newPin, virtual_pin: parseInt(e.target.value) || 1 })}
+                        onChange={(e) =>
+                          setNewPin({ ...newPin, virtual_pin: parseInt(e.target.value) || 1 })
+                        }
                         required
                         disabled={addPinLoading}
                       />
@@ -356,7 +187,7 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
                       <label>Loại Pin</label>
                       <select
                         value={newPin.pin_type}
-                        onChange={(e) => setNewPin({ ...newPin, pin_type: e.target.value as 'INPUT' | 'OUTPUT' })}
+                        onChange={(e) => setNewPin({ ...newPin, pin_type: e.target.value as PinType })}
                         required
                         disabled={addPinLoading}
                       >
@@ -369,7 +200,7 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
                       <label>Kiểu dữ liệu</label>
                       <select
                         value={newPin.data_type}
-                        onChange={(e) => setNewPin({ ...newPin, data_type: e.target.value as any })}
+                        onChange={(e) => setNewPin({ ...newPin, data_type: e.target.value as DataType })}
                         required
                         disabled={addPinLoading}
                       >
@@ -396,9 +227,7 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
                       </div>
                     )}
 
-                    {addPinError && (
-                      <div className="error-message">{addPinError}</div>
-                    )}
+                    {addPinError && <div className="error-message">{addPinError}</div>}
 
                     <div className="form-actions">
                       <button
@@ -419,11 +248,7 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
                       >
                         Hủy
                       </button>
-                      <button
-                        type="submit"
-                        className="btn-save"
-                        disabled={addPinLoading}
-                      >
+                      <button type="submit" className="btn-save" disabled={addPinLoading}>
                         {addPinLoading ? 'Đang lưu...' : 'Lưu'}
                       </button>
                     </div>
@@ -439,4 +264,3 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
 };
 
 export default DeviceConfigModal;
-

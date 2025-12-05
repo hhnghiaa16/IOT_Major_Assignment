@@ -1,168 +1,41 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * Dashboard Component (Dumb Component)
+ * Pure UI component for dashboard management
+ */
+
+import React, { useState } from 'react';
 import '../../styles/Dashboard.css';
 import BlockConfigModal from './BlockConfigModal';
 import ChartBlock from './ChartBlock';
-
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-
-export interface DashboardBlock {
-  id: number;
-  user_id: number;
-  created_at: string;
-  typeblock: number;
-  label_block: string;
-  virtual_pin: number;
-  device_name: string;
-  pin_label: string;
-  token_verify: string;
-  value?: number;
-}
+import { useDashboard } from '../../hooks/useDashboard';
+import type { DashboardBlock } from '../../types';
 
 const Dashboard: React.FC = () => {
-  const [buttonBlocks, setButtonBlocks] = useState<DashboardBlock[]>([]);
-  const [chartBlocks, setChartBlocks] = useState<DashboardBlock[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
+  const {
+    buttonBlocks,
+    chartBlocks,
+    loading,
+    error,
+    togglingBlockId,
+    loadAllBlocks,
+    toggleButton,
+    deleteBlock,
+  } = useDashboard();
+
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedBlock, setSelectedBlock] = useState<DashboardBlock | null>(null);
   const [isNewBlock, setIsNewBlock] = useState(false);
   const [blockType, setBlockType] = useState<number>(0);
-  
-  const [togglingBlockId, setTogglingBlockId] = useState<number | null>(null);
 
-  const normalizeValue = (value: any): number => {
+  const normalizeValue = (value: unknown): number => {
     if (value === undefined || value === null) return 0;
     if (typeof value === 'string') {
       const num = parseInt(value, 10);
-      return isNaN(num) ? 0 : (num >= 1 ? 1 : 0);
+      return isNaN(num) ? 0 : num >= 1 ? 1 : 0;
     }
     return Number(value) >= 1 ? 1 : 0;
   };
 
-  const loadBlocks = async (type: number) => {
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Chưa đăng nhập');
-      }
-
-      const res = await fetch(`${API_BASE}/dashborad/blocks?typeblock=${type}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Không thể tải blocks');
-      }
-
-      return data.blocks || [];
-    } catch (err: any) {
-      console.error(`Error loading ${type === 0 ? 'button' : 'chart'} blocks:`, err);
-      return [];
-    }
-  };
-
-  const initializeButtonsToOff = async (buttons: DashboardBlock[]) => {
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
-
-    const initPromises = buttons.map(async (block) => {
-      try {
-        await fetch(`${API_BASE}/mqtt/device-command`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            token_verify: block.token_verify,
-            virtual_pin: block.virtual_pin,
-            value: 0,
-          }),
-        });
-      } catch (err) {
-        console.error(`Error initializing block ${block.id}:`, err);
-      }
-    });
-
-    await Promise.allSettled(initPromises);
-  };
-
-  const loadAllBlocks = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [buttons, charts] = await Promise.all([
-        loadBlocks(0),
-        loadBlocks(1),
-      ]);
-      
-      const buttonsWithDefaultValue = buttons.map((block: DashboardBlock) => ({
-        ...block,
-        value: 0,
-      }));
-      
-      setButtonBlocks(buttonsWithDefaultValue);
-      setChartBlocks(charts);
-
-      if (buttons.length > 0) {
-        await initializeButtonsToOff(buttons);
-      }
-    } catch (err: any) {
-      setError(err?.message || 'Lỗi khi tải dữ liệu');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadAllBlocks();
-  }, []);
-
-  // Toggle đơn giản: đổi trạng thái và gửi API
-  const handleToggleButton = async (block: DashboardBlock) => {
-    if (togglingBlockId === block.id) return;
-    
-    const currentValue = normalizeValue(block.value);
-    const newValue = currentValue === 1 ? 0 : 1;
-    
-    setTogglingBlockId(block.id);
-    
-    // Đổi trạng thái ngay
-    setButtonBlocks(prev => prev.map(b => 
-      b.id === block.id ? { ...b, value: newValue } : b
-    ));
-    
-    // Gửi API (không care kết quả)
-    try {
-      const token = localStorage.getItem('access_token');
-      if (token) {
-        await fetch(`${API_BASE}/mqtt/device-command`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            token_verify: block.token_verify,
-            virtual_pin: block.virtual_pin,
-            value: newValue,
-          }),
-        });
-      }
-    } catch (err) {
-      console.error('Error sending command:', err);
-    } finally {
-      setTogglingBlockId(null);
-    }
-  };
-  
   const handleConfigureBlock = (block: DashboardBlock) => {
     setSelectedBlock(block);
     setIsNewBlock(false);
@@ -174,40 +47,6 @@ const Dashboard: React.FC = () => {
     setBlockType(type);
     setIsNewBlock(true);
     setShowConfigModal(true);
-  };
-
-  const handleDeleteBlock = async (block: DashboardBlock) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa block "${block.label_block}"?`)) {
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        alert('Chưa đăng nhập');
-        return;
-      }
-
-      const res = await fetch(`${API_BASE}/dashborad/block?id=${block.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        alert(data.message || 'Xóa block thất bại');
-        return;
-      }
-
-      await loadAllBlocks();
-      alert('Đã xóa block thành công');
-    } catch (err: any) {
-      alert(err?.message || 'Lỗi khi xóa block');
-    }
   };
 
   const handleSaveConfig = async () => {
@@ -229,7 +68,9 @@ const Dashboard: React.FC = () => {
       <div className="dashboard-container">
         <div className="dashboard-error">
           <p>{error}</p>
-          <button className="btn" onClick={loadAllBlocks}>Thử lại</button>
+          <button className="btn" onClick={loadAllBlocks}>
+            Thử lại
+          </button>
         </div>
       </div>
     );
@@ -278,7 +119,7 @@ const Dashboard: React.FC = () => {
                   <div className="block-header">
                     <span className="block-label">{block.label_block}</span>
                     <div className="block-actions">
-                      <button 
+                      <button
                         className="block-action-btn"
                         onClick={() => handleConfigureBlock(block)}
                         title="Cấu hình"
@@ -288,9 +129,9 @@ const Dashboard: React.FC = () => {
                           <path d="M8 2v1.33M8 12.67V14M2 8h1.33M12.67 8H14M3.05 3.05l.94.94M11.01 11.01l.94.94M3.05 12.95l.94-.94M11.01 4.99l.94-.94" />
                         </svg>
                       </button>
-                      <button 
+                      <button
                         className="block-action-btn block-action-delete"
-                        onClick={() => handleDeleteBlock(block)}
+                        onClick={() => deleteBlock(block)}
                         title="Xóa"
                       >
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
@@ -303,16 +144,26 @@ const Dashboard: React.FC = () => {
                     <span className="block-device">{block.device_name}</span>
                     <span className="block-pin">Pin {block.virtual_pin}</span>
                   </div>
-                  <button 
-                    className={`toggle-button ${normalizeValue(block.value) === 1 ? 'active' : ''} ${togglingBlockId === block.id ? 'loading' : ''}`}
-                    onClick={() => handleToggleButton(block)}
+                  <button
+                    className={`toggle-button ${normalizeValue(block.value) === 1 ? 'active' : ''} ${
+                      togglingBlockId === block.id ? 'loading' : ''
+                    }`}
+                    onClick={() => toggleButton(block)}
                     disabled={togglingBlockId === block.id}
                   >
                     {togglingBlockId === block.id ? (
                       <div className="toggle-status-wrapper">
-                        <svg className="spinner" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <svg
+                          className="spinner"
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                        >
                           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                        </svg> 
+                        </svg>
                         <span className="toggle-status-text">Đang xử lý...</span>
                       </div>
                     ) : (
@@ -362,7 +213,7 @@ const Dashboard: React.FC = () => {
                   key={block.id}
                   block={block}
                   onConfigure={() => handleConfigureBlock(block)}
-                  onDelete={() => handleDeleteBlock(block)}
+                  onDelete={() => deleteBlock(block)}
                 />
               ))
             )}
@@ -370,7 +221,6 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Config Modal */}
       {showConfigModal && (
         <BlockConfigModal
           block={selectedBlock}
