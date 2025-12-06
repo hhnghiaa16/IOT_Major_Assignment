@@ -15,6 +15,12 @@ export interface RegisterRequest {
   type: number;
 }
 
+export interface RegisterViewerRequest {
+  email: string;
+  name: string;
+  password: string;
+}
+
 export interface AuthResponse {
   access_token: string;
   user?: User;
