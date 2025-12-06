@@ -7,6 +7,8 @@
   align-items: center;
   justify-content: space-between;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 1000;
 }
 
 .header-left {
@@ -82,18 +84,11 @@
   width: 100%;
 }
 
-.nav-button-logout {
+.header-right {
   margin-left: auto;
-  color: #ef4444;
-}
-
-.nav-button-logout:hover {
-  color: #dc2626;
-  background: rgba(239, 68, 68, 0.1);
-}
-
-.nav-button-logout::before {
-  background: linear-gradient(90deg, #ef4444, #dc2626);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 @media (max-width: 768px) {

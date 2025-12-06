@@ -1,38 +1,49 @@
+/**
+ * App Component
+ * Main application component with routing logic
+ */
+
 import React, { useState, useEffect } from 'react';
 import '../styles/App.css';
 import Header from './Header';
 import Dashboard from './dashboard/Dashboard';
 import Login from './Login';
 import MyDevices from './MyDevices';
+import ChatPage from './ChatPage';
+import ProtectedRoute from './ProtectedRoute';
+import { useAuth } from '../hooks/useAuth';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState('MyDevices');
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState('Dashboard');
   const [pageKey, setPageKey] = useState<number>(0);
+  const { isLoggedIn, login, logout, isAdmin, user } = useAuth();
 
+  // Force remount when page changes
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    setIsLoggedIn(Boolean(token));
-  }, []);
-
-  // Force remount khi chuyển trang
-  useEffect(() => {
-    setPageKey(prev => prev + 1);
+    setPageKey((prev) => prev + 1);
   }, [currentPage]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user');
-    setIsLoggedIn(false);
+  // Redirect Viewer away from MyDevices
+  useEffect(() => {
+    if (isLoggedIn && user && !isAdmin() && currentPage === 'MyDevices') {
+      setCurrentPage('Dashboard');
+    }
+  }, [isLoggedIn, user, currentPage, isAdmin]);
+
+  const handleNavigate = (page: string) => {
+    // Prevent Viewer from accessing MyDevices
+    if (page === 'MyDevices' && !isAdmin()) {
+      setCurrentPage('Dashboard');
+      return;
+    }
+    setCurrentPage(page);
   };
 
-  // TODO: bo tam thoi ! ra khoi isLoggedIn de debug
   if (!isLoggedIn) {
     return (
       <div className="app">
-        <Header currentPage={currentPage} onNavigate={setCurrentPage} />
         <div className="container">
-          <Login onLogin={() => setIsLoggedIn(true)} />
+          <Login onLogin={(user) => login(user)} />
         </div>
       </div>
     );
@@ -40,17 +51,21 @@ const App: React.FC = () => {
 
   return (
     <div className="app">
-      <Header 
-        currentPage={currentPage} 
-        onNavigate={setCurrentPage} 
-        onLogout={handleLogout}
-      />
+      <Header currentPage={currentPage} onNavigate={handleNavigate} onLogout={logout} />
 
       <div className="container">
         {currentPage === 'MyDevices' ? (
-          <MyDevices key={`my-devices-${pageKey}`} onClose={() => {}} />
+          <ProtectedRoute allowedRoles={['admin']}>
+            <MyDevices key={`my-devices-${pageKey}`} onClose={() => { }} />
+          </ProtectedRoute>
         ) : currentPage === 'Dashboard' ? (
-          <Dashboard key={`dashboard-${pageKey}`} />
+          <ProtectedRoute allowedRoles={['admin', 'viewer']}>
+            <Dashboard key={`dashboard-${pageKey}`} />
+          </ProtectedRoute>
+        ) : currentPage === 'Chat' ? (
+          <ProtectedRoute allowedRoles={['admin', 'viewer']}>
+            <ChatPage key={`chat-${pageKey}`} />
+          </ProtectedRoute>
         ) : null}
       </div>
     </div>
