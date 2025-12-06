@@ -7,7 +7,7 @@ class UserRegister(BaseModel):
     email: EmailStr
     name: str
     password: str
-    type : int # 0 : admin , 1 : observer
+    # type : int # 0 : admin , 1 : observer
 class UserUpdate(BaseModel):
     name: str
     email: EmailStr

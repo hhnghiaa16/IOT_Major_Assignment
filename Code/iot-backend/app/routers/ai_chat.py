@@ -60,7 +60,8 @@ async def config_ai(request: ConfigAIRequest , current_user: dict = Depends(get_
                     "token_verify": request.token_verify,
                     "name": request.name,
                     "style": request.style,
-                    "describe": request.describe
+                    "describe": request.describe,
+                    "user_id": current_user["id"]
                 }
             )
         conversation_service.clear_agent_config(request.token_verify)
@@ -71,21 +72,25 @@ async def config_ai(request: ConfigAIRequest , current_user: dict = Depends(get_
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @router.get("/config_ai")
-async def get_config_ai(token_verify: str):
+async def get_config_ai(current_user: dict = Depends(get_current_user)):
     """
     Get config AI
     """
     agent_config = db.execute_query(
         table="agent_config",
         operation="select",
-        filters={"token_verify": token_verify}
+        filters={"user_id": current_user["id"]}
     )
     if agent_config:
-        return agent_config
+        return {
+            "success": True,
+            "message": "Lấy cấu hình AI thành công",
+            "data": agent_config
+        }
     else:
         return {
             "success": False,
-            "message": "Agent config not found"
+            "message": "Không tìm thấy cấu hình AI"
         }
 
 @router.post("/chat")
@@ -139,84 +144,36 @@ async def list_available_tools():
     return tools
 
 
-@router.get("/conversation/{client_id}")
-async def get_conversation_history(client_id: str):
-    """
-    Lấy lịch sử hội thoại của một client
-    
-    Example:
-    ```
-    GET /ai/conversation/user_123
-    ```
-    
-    Response:
-    ```json
-    {
-        "client_id": "user_123",
-        "history": [
-            {"role": "user", "content": "Bật đèn"},
-            {"role": "assistant", "content": "Đã bật đèn"}
-        ],
-        "message_count": 2,
-        "metadata": {...}
-    }
-    ```
-    """
+@router.get("/conversation" , response_model=dict)
+async def get_conversation_history(client_id: str , current_user: dict = Depends(get_current_user)):
+    devices = db.execute_query(
+        table="devices",
+        operation="select",
+        filters={"token_verify": client_id}
+    )
+    if not devices:
+        return {
+            "success": False,
+            "message": "Không tìm thấy thiết bị cho client {client_id}"
+        }
+    if devices[0]["user_id"] != current_user["id"]:
+        return {
+            "success": False,
+            "message": "Thiết bị không phù hợp với người dùng"
+        }
     history = conversation_service.get_conversation_history(client_id)
-    metadata = conversation_service.get_conversation_metadata(client_id)
     
     if not history:
-        raise HTTPException(status_code=404, detail=f"Không tìm thấy conversation cho client {client_id}")
+        return {
+            "success": False,
+            "message": "Không tìm thấy conversation cho client {client_id}"
+        }
     
     return {
         "client_id": client_id,
         "history": history,
         "message_count": len(history),
-        "metadata": metadata
     }
-
-
-@router.delete("/conversation/{client_id}")
-async def clear_conversation(client_id: str):
-    """
-    Xóa lịch sử hội thoại của một client
-    
-    Example:
-    ```
-    DELETE /ai/conversation/user_123
-    ```
-    """
-    conversation_service.clear_conversation(client_id)
-    
-    return {
-        "message": f"Đã xóa conversation của client {client_id}",
-        "success": True
-    }
-
-
-@router.get("/conversations")
-async def list_all_conversations():
-    """
-    Liệt kê tất cả các conversation đang hoạt động
-    
-    Response:
-    ```json
-    {
-        "total_active_clients": 5,
-        "total_messages": 24,
-        "clients": {
-            "user_123": {
-                "message_count": 4,
-                "last_activity": "2025-01-01T10:30:00",
-                "metadata": {...}
-            }
-        }
-    }
-    ```
-    """
-    stats = conversation_service.get_statistics()
-    return stats
-
 
 @router.get("/conversations/clients")
 async def get_active_clients():

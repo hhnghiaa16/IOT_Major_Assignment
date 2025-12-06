@@ -10,7 +10,7 @@ from app.middleware.auth import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-@router.post("/register", response_model=Token)
+@router.post("/register", response_model=dict)
 def register_user(user_data: UserRegister):
     """Đăng ký user mới
     Args: type 0 : admin , 1 : observer
@@ -22,7 +22,6 @@ def register_user(user_data: UserRegister):
             operation="select",
             filters={"email": user_data.email}
         )
-        
         if existing_users:
             return {
                 "success": False,
@@ -40,7 +39,7 @@ def register_user(user_data: UserRegister):
                 "email": user_data.email,
                 "name": user_data.name,
                 "password_hash": hashed_password,
-                "type": user_data.type
+                "type": 0
             }
         )
         
@@ -67,7 +66,7 @@ def register_user(user_data: UserRegister):
                 "email": user["email"],
                 "name": user["name"],
                 "is_active": user["is_active"],
-                "type": user["type"]
+                "type": 0
             }
         }
         
@@ -76,7 +75,72 @@ def register_user(user_data: UserRegister):
             "success": False,
             "message": f"Registration failed: {str(e)}"
         }
-
+@router.post("/register_viewer", response_model=dict)
+def register_viewer(user_data: UserRegister ,current_user: dict = Depends(get_current_user)):
+    """Đăng ký user mới
+    Args: type 0 : admin , 1 : observer
+    """
+    try:
+        # Check if user already exists
+        existing_users = db.execute_query(
+            table="users",
+            operation="select",
+            filters={"email": user_data.email}
+        )
+        if existing_users:
+            return {
+                "success": False,
+                "message": "Email already registered"
+            }
+        
+        # Hash password
+        hashed_password = get_password_hash(user_data.password)
+        
+        # Create user
+        new_user = db.execute_query(
+            table="users",
+            operation="insert",
+            data={
+                "email": user_data.email,
+                "name": user_data.name,
+                "password_hash": hashed_password,
+                "admin_id": current_user["id"],
+                "type": 1
+            }
+        )
+        
+        if not new_user:
+            return {
+                "success": False,
+                "message": "Failed to create user"
+            }
+        
+        user = new_user[0]
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": str(current_user["id"])}, 
+            expires_delta=access_token_expires
+        )
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "name": user["name"],
+                "is_active": user["is_active"],
+                "type": 1
+            }
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Registration failed: {str(e)}"
+        }
 @router.post("/login", response_model=Token)
 def login_user(user_data: UserLogin):
     """Đăng nhập user"""
@@ -108,13 +172,19 @@ def login_user(user_data: UserLogin):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Account is inactive"
             )
-        
-        # Create access token
-        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": str(user["id"])},
-            expires_delta=access_token_expires
-        )
+        if user["type"] == 0 : 
+            # Create access token
+            access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            access_token = create_access_token(
+                data={"sub": str(user["id"])},
+                expires_delta=access_token_expires
+            )
+        else:
+            access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            access_token = create_access_token(
+                data={"sub": str(user["admin_id"])},
+                expires_delta=access_token_expires
+            )
         
         return {
             "access_token": access_token,
@@ -148,11 +218,23 @@ def get_current_user_info(current_user: dict = Depends(get_current_user)):
         type=current_user["type"]
     )
 
-@router.get("/update_user_info", response_model=dict)
+@router.post("/update_user_info", response_model=dict)
 def update_user_info(update_data : UserUpdate, current_user: dict = Depends(get_current_user)):
     """Cập nhật thông tin user hiện tại"""
     try:
+        existing_users = db.execute_query(
+            table="users",
+            operation="select",
+            filters={"email": update_data.email}
+        )
+        if existing_users:
+            return {
+                "success": False,
+                "message": "Email already registered"
+            }
+        
         password_hash = get_password_hash(update_data.password)
+
         users = db.execute_query(
             table="users",
             operation="update",
