@@ -27,6 +27,7 @@ public:
     int readAnalog(int pin);
     void writeAnalog(int pin, int value);
     void writePWM(int pin, int dutyCycle);
+    int readPWM(int pin);  // Đọc giá trị PWM hiện tại (nếu hỗ trợ)
     
     // Command Processing
     void processCommand(const int virtualPin, const String& message, bool isDigital);
@@ -64,6 +65,7 @@ private:
     
     // ======= Private methods =======
     void loadGPIOConfig();
+    bool isValidAnalogPin(int pin);  // Kiểm tra pin có hỗ trợ ADC không
 };
 
 #endif

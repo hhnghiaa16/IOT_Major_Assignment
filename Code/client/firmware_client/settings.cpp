@@ -158,3 +158,62 @@ void Settings::eraseAll() {
     }
     _dirty = true;
 }
+
+// Hàm kiểm tra thông tin NVS
+void Settings::printNVSInfo() {
+    nvs_stats_t nvs_stats;
+    esp_err_t err = nvs_get_stats("nvs", &nvs_stats);
+    
+    if (err != ESP_OK) {
+        Serial.printf("❌ [Settings] Failed to get NVS stats: %s\n", esp_err_to_name(err));
+        return;
+    }
+    
+    Serial.println("📊 ===== NVS Storage Information =====");
+    Serial.printf("   Total entries: %d\n", nvs_stats.total_entries);
+    Serial.printf("   Used entries: %d\n", nvs_stats.used_entries);
+    Serial.printf("   Free entries: %d\n", nvs_stats.free_entries);
+    
+    // Tính phần trăm sử dụng
+    float usagePercent = (float)nvs_stats.used_entries / (float)nvs_stats.total_entries * 100.0;
+    Serial.printf("   Usage: %.1f%%\n", usagePercent);
+    
+    // Ước tính dung lượng (mỗi entry ~32 bytes overhead + data)
+    // NVS mặc định thường là 24KB (24576 bytes)
+    size_t estimatedSizeKB = (nvs_stats.total_entries * 32) / 1024;
+    Serial.printf("   Estimated size: ~%d KB\n", estimatedSizeKB);
+    
+    if (usagePercent > 80) {
+        Serial.println("⚠️ [Settings] WARNING: NVS usage is above 80%!");
+        Serial.println("💡 [Settings] Consider cleaning unused data or increasing NVS partition size");
+    } else if (usagePercent > 50) {
+        Serial.println("💡 [Settings] NVS usage is moderate");
+    } else {
+        Serial.println("✅ [Settings] NVS has plenty of free space");
+    }
+    Serial.println("=====================================");
+}
+
+size_t Settings::getNVSFreeEntries() {
+    nvs_stats_t nvs_stats;
+    if (nvs_get_stats("nvs", &nvs_stats) == ESP_OK) {
+        return nvs_stats.free_entries;
+    }
+    return 0;
+}
+
+size_t Settings::getNVSUsedEntries() {
+    nvs_stats_t nvs_stats;
+    if (nvs_get_stats("nvs", &nvs_stats) == ESP_OK) {
+        return nvs_stats.used_entries;
+    }
+    return 0;
+}
+
+size_t Settings::getNVSTotalEntries() {
+    nvs_stats_t nvs_stats;
+    if (nvs_get_stats("nvs", &nvs_stats) == ESP_OK) {
+        return nvs_stats.total_entries;
+    }
+    return 0;
+}

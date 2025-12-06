@@ -24,6 +24,12 @@ public:
 
     void eraseKey(const String& key);
     void eraseAll();
+    
+    // Hàm kiểm tra dung lượng NVS
+    static void printNVSInfo();
+    static size_t getNVSFreeEntries();
+    static size_t getNVSUsedEntries();
+    static size_t getNVSTotalEntries();
 
 private:
     String _namespace;
