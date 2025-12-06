@@ -30,7 +30,8 @@ class ConversationService:
             # "https://openrouter.ai/api/v1",
             api_key=api_key
         )
-        self.model = "z-ai/glm-4.5-air:free"
+        self.model = "x-ai/grok-4.1-fast"
+        # "z-ai/glm-4.5-air:free"
        
         # cua siliconflow
         # "THUDM/GLM-4-9B-0414"

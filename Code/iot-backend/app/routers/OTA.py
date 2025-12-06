@@ -6,13 +6,18 @@ from fastapi import APIRouter, File, UploadFile, Form, HTTPException, status, De
 from pydantic import BaseModel
 from app.database import db, supabase_admin
 from app.middleware.auth import get_current_device, get_current_user
-
+from app.routers.mqtt import broker_host , broker_port
+from app.services.mqtt_service import mqtt_service
+from time import sleep
 # --- Khởi tạo Router ---
 router = APIRouter(
     prefix="/ota",
     tags=["OTA Management"]
 )
-
+class PostInfoOTA(BaseModel):
+    client_id: str
+    type: int # 0: check , 1: update
+    
 # --- Các mô hình dữ liệu Pydantic ---
 class FileInfoBase(BaseModel):
     filename: str
@@ -47,7 +52,7 @@ async def upload_file(
         last_insert = db.execute_query(
             table="file_info",
             operation="select",
-            filters={"user_id": current_user["id"]}
+            filters={"user_id": current_user["id"] , "type": type}
         )
         if last_insert:
             last_insert = last_insert[0]
@@ -175,6 +180,7 @@ async def get_info_update(
         slave_version = None
         master_link = None
         slave_link = None
+        response = response[::-1]
         for file in response:
             if file["type"] == 0 and master_link is None:
                 master_link = file["download_url"]
@@ -185,8 +191,8 @@ async def get_info_update(
         
         return {
             "success": True,
-            "broker_server": "192.168.43.172",
-            "broker_port": 1883,
+            "broker_server": broker_host,
+            "broker_port": broker_port,
             "master_link": master_link,
             "master_version": master_version,
             "slave_link": slave_link,
@@ -201,7 +207,58 @@ async def get_info_update(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Đã xảy ra lỗi khi lấy firmware mới nhất: {e}"
         )
-
+@router.post("/check-info-ota")
+def check_info_ota(data: PostInfoOTA , current_user: dict = Depends(get_current_user)):
+    try:   
+        result = db.execute_query(
+            table="devices",
+            operation="select",
+            filters={"token_verify": data.client_id}
+        )
+        if not result or len(result) == 0:
+            return {
+                "success": False,
+                "message": "Không tìm thấy thiết bị"
+            }   
+        if result[0]["user_id"] != current_user["id"]:
+            return {
+                "success": False,
+                "message": "Không có thiết bị tương ứng , hãy đăng kí thiết bị để sử dụng"
+            }
+        if data.type == 0:
+            mqtt_service.publish_message_NC(data.client_id, "OTA:CK")
+            sleep(0.2)
+            response = mqtt_service.client_ota_data.get(data.client_id)
+            if response:
+                return {
+                "success": True,
+                "data": response
+            }
+            else:
+                return {
+                    "success": False,
+                    "message": "không có dữ liệu "
+                }
+        elif data.type == 1:
+            mqtt_service.publish_message_NC(data.client_id, "OTA:UP")
+            sleep(0.2)
+            response = mqtt_service.client_ota_data.get(data.client_id)
+            if response:
+                return {
+                "success": True,
+                "data": response
+            }
+            else:
+                return {
+                    "success": False,
+                    "message": "không có dữ liệu "
+                }
+    except Exception as e:
+        print(f"Lỗi: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Đã xảy ra lỗi khi lấy thông tin broker: {e}"
+        )
 @router.delete("/files/{file_id}", status_code=status.HTTP_200_OK)
 async def delete_file(
     file_id: str,
@@ -245,3 +302,4 @@ async def delete_file(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Đã xảy ra lỗi khi xóa file: {e}"
         )
+        

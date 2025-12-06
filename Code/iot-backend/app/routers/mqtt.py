@@ -12,6 +12,7 @@ from app.broker_server import TOPIC_CONTRO , TOPIC_SENSOR
 from app.database import db
 router = APIRouter(prefix="/mqtt", tags=["MQTT Management"])
 TAG = "MQTT ROUTER"
+
 # Pydantic models
 class MQTTMessage(BaseModel):
     topic: str
@@ -36,6 +37,8 @@ class MqttDeviceCommand(BaseModel):
     token_verify: str
     virtual_pin: int
     value: float
+broker_host = '192.168.3.102'
+broker_port = 1883
 @router.get("/status", response_model=MQTTStatus)
 def get_mqtt_status():
     """Lấy trạng thái MQTT Broker"""
@@ -77,8 +80,8 @@ def startTestClient(token_verify : MqttClientModel ):
     """Khởi động MQTT Client Test for HTTP api"""
     try :
         # Client không thể kết nối đến 0.0.0.0, phải dùng localhost hoặc 127.0.0.1
-        broker_host="localhost"  # hoặc "127.0.0.1"
-        broker_port= 1883
+        # broker_host="localhost"  # hoặc "127.0.0.1"
+        # broker_port= 1883
         if mqtt_service.client_running :
             return {"mes" : "dang chayj client roi "}
 

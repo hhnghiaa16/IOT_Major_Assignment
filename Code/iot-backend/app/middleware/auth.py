@@ -58,24 +58,25 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 def get_current_device(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Middleware để get current ESP32 device từ device token"""
     try:
-        payload = verify_device_token(credentials.credentials)
+        devices = db.execute_query(
+            table="devices",
+            operation="select",
+            filters={"token_verify": credentials.credentials}
+        )
+        print(f"🔍 token_verify: {credentials.credentials}")
+        if not devices:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Device token not found"
+            )
+        device = devices[0] 
+        payload = verify_device_token(device["device_access_token"])
         if payload is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid device token"
             )
-        
-        # Get device from database
-        devices =  db.execute_query(
-            table="devices",
-            operation="select",
-            filters={"id": payload["user_id"]}  # device_id stored in "sub"
-        )
-        if not devices:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Device not found"
-            )
+     
         return devices[0]
         
     except HTTPException:

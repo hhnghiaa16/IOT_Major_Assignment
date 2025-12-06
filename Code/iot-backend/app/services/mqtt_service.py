@@ -34,6 +34,7 @@ class MQTTService:
         self.client_running = False
         self.device_tokens = {}     # {device_token: device_info}
         self.client_is_voice = {}
+        self.client_ota_data = {}
     def start_client(self , host='localhost', port=1883 , token = "client-1"):
         if self.client_running : 
             print(TAG + f" client da chay roi")
@@ -120,6 +121,15 @@ class MQTTService:
                 self.broker.clients[client_id] = client_socket
                 self.broker.client_subscriptions[client_socket] = []
                 self.device_tokens[client_id] = device[0]
+                self.client_ota_data[client_id] = {
+                    "is_updating" : None,
+                    "on_progress" : 0 ,
+                    "auto_update": None,
+                    "lastVersion" : None , 
+                    "lastUpdate" : None,
+                    "hasNewVersion" : None,
+                    "error" : []
+                }
                 # Gửi CONNACK - "Chào lại, kết nối thành công!"
                 connack = bytes([0x20, 0x02, 0x00, 0x00])  # CONNACK với return code 0
                 client_socket.send(connack)
@@ -187,10 +197,6 @@ class MQTTService:
             # elif topic.startswith("device/"):
             #     self._handle_device_status(topic, message)
                 
-            # Gọi custom handlers
-            # self._call_message_handlers(topic, message)
-            
-            # Forward cho subscribers (original logic)
             if topic in self.broker.subscriptions:
                 subscribers = self.broker.subscriptions[topic]
                 publish_packet = self.broker.create_publish_packet(topic, message)
@@ -268,6 +274,8 @@ class MQTTService:
                 print(TAG + f"loi roi ")
             elif(message.startswith("AU")):
                 self.client_is_voice[client_id] = message.split(":")[1] == "ON"
+            elif(message.startswith("OTA")):
+                self.handle_ota(client_id , message)
                 
         except Exception as e:
             print(f"❌ Lỗi xử lý notification: {e}")
@@ -294,23 +302,59 @@ class MQTTService:
                     
         except Exception as e:
             print(f"❌ Lỗi xử lý device status: {e}")
-    
-            
-    def _call_message_handlers(self, topic: str, message: str):
-        """Gọi các message handlers đã đăng ký"""
-        if topic in self.message_handlers:
-            for handler in self.message_handlers[topic]:
-                try:
-                    handler(topic, message)
-                except Exception as e:
-                    print(f"❌ Lỗi trong message handler: {e}")
+    def handle_ota(self , client_id , message):
+        try:
+            # Parse message: OTA/{client_id}/{version}
+            # self.client_ota_data[client_id] = {
+            #         "is_updating" : False,
+            #         "on_progress" : 0 ,
+            #         "auto_update": False,
+            #         "error" : []
+            #     }
+            parts = message.split(':')
+            if len(parts) >= 2:
+                message = parts[1]
+                if message.startswith("UPDATING"):
+                    message = message.split('@')
+                    data = self.client_ota_data[client_id]
+                    self.client_ota_data[client_id] = {
+                        "is_updating": True,
+                        "on_progress": message[1],
+                        "auto_update" : data['auto_update'],
+                        "lastVersion" : data['lastVersion'],
+                        "lastUpdate" : data['lastUpdate'],
+                        "hasNewVersion" : data['hasNewVersion'],
+                        "error" : []
+                    }
+                elif message.startswith("ERROR"):
+                    data = self.client_ota_data[client_id]
+                    self.client_ota_data[client_id] = {
+                        "is_updating": data['is_updating'],
+                        "on_progress": data['on_progress'],
+                        "auto_update" : data['auto_update'],
+                        "lastVersion" : data['lastVersion'],
+                        "lastUpdate" : data['lastUpdate'],
+                        "hasNewVersion" : data['hasNewVersion'],
+                        "error" : message.split('@')[1]
+                    }
+                elif message.startswith("INFO"):
+                    # "OTA:INFO@" + lastVersion + "@" + lastUpdate + "@" + 
+        #    String(autoUpdateEnabled) + "@" + String(hasNewVersion ? 1 : 0);
+                    data = self.client_ota_data[client_id]
+                    message = message.split('@')
+                    self.client_ota_data[client_id] = {
+                        "is_updating": False,
+                        "on_progress": 0,
+                        "auto_update" : message[3] == '1',
+                        "lastVersion" : None if message[1] == 'unknown' else message[1],
+                        "lastUpdate" : None if message[2] == 'unknown' else message[2],
+                        "hasNewVersion" : message[4] == '1',
+                        "error" : data['error']
+                    }
+       
                     
-    def add_message_handler(self, topic: str, handler: Callable):
-        """Đăng ký handler cho topic cụ thể"""
-        if topic not in self.message_handlers:
-            self.message_handlers[topic] = []
-        self.message_handlers[topic].append(handler)
-        print(f"📝 Đã đăng ký handler cho topic: {topic}")
+        except Exception as e:
+            print(f"❌ Lỗi xử lý OTA: {e}")
 
 
     def publish_message_CT(self , client_id , virtualPin ,  message):
@@ -348,15 +392,26 @@ class MQTTService:
             return "Lỗi khi gửi messsage CT "
 
     def publish_message_NC(self, client_id, message):
+        if not client_id :
+            print(TAG + f" Client id khong ton tai")
+            return False
+        
+        # Kiểm tra broker đã khởi động chưa
+        if not self.broker or not self.running:
+            print(TAG + f"❌ MQTT Broker chưa khởi động")
+            return "MQTT Broker chưa khởi động"
         try:
-            if not client_id :
-                print(TAG + f" Client id khong ton tai")
-                return "Client id khong ton tai"
-            topic = TOPIC_NOFICATION + client_id
+            if client_id not in self.broker.clients:
+                print(TAG + f"❌ Client {client_id} không tồn tại hoặc chưa kết nối")
+                return "Client không tồn tại hoặc chưa kết nối"
+            
+            # Lấy socket của client
             client_socket = self.broker.clients.get(client_id)
             if client_socket is None:
                 print(TAG + f"❌ Socket của client {client_id} không tồn tại")
                 return "Socket của client không tồn tại"
+            
+            topic = TOPIC_NOFICATION + client_id
             publish_packet = self.broker.create_publish_packet(topic, message)
             client_socket.send(publish_packet)
             print(TAG + f"📤 Đã publish thong bao : {topic} -> {message}")
