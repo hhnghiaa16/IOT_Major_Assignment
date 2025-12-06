@@ -8,7 +8,6 @@ import '../styles/MyDevices.css';
 import DeviceConfigModal from './DeviceConfigModal';
 import { useDevices } from '../hooks/useDevices';
 import { useDeviceManagement } from '../hooks/useDeviceManagement';
-import { useAuth } from '../hooks/useAuth';
 import { getStatusText, getStatusClass, getTypeClass, copyToClipboard } from '../utils/deviceHelpers';
 import { formatDateTime } from '../utils/formatters';
 import type { MyDevicesProps, Device } from '../types';
@@ -17,7 +16,6 @@ const MyDevices: React.FC<MyDevicesProps> = ({ onClose }) => {
   const { devices, loading, error, loadDevices } = useDevices();
   const { registerLoading, registerError, registerDevice, deleteDevice, getDeviceInfo } =
     useDeviceManagement(loadDevices);
-  const { isAdmin, isViewer } = useAuth();
 
   const [showRegisterForm, setShowRegisterForm] = useState(false);
   const [registerName, setRegisterName] = useState('');
@@ -32,12 +30,6 @@ const MyDevices: React.FC<MyDevicesProps> = ({ onClose }) => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Prevent Viewers from registering devices
-    if (isViewer()) {
-      alert('Bạn không có quyền đăng ký thiết bị mới. Chỉ admin mới có thể thực hiện thao tác này.');
-      setShowRegisterForm(false);
-      return;
-    }
     try {
       await registerDevice({
         device_name: registerName.trim(),
@@ -52,11 +44,6 @@ const MyDevices: React.FC<MyDevicesProps> = ({ onClose }) => {
   };
 
   const handleDelete = async (device: Device) => {
-    // Prevent Viewers from deleting devices
-    if (isViewer()) {
-      alert('Bạn không có quyền xóa thiết bị. Chỉ quản trị viên mới có thể thực hiện thao tác này.');
-      return;
-    }
     const token = device.device_token || null;
     if (token) {
       await deleteDevice(token, device.device_name);
@@ -64,7 +51,6 @@ const MyDevices: React.FC<MyDevicesProps> = ({ onClose }) => {
   };
 
   const handleConfigure = (device: Device) => {
-    // Allow Viewer to view configuration, but they can't modify
     setSelectedDevice(device);
     setShowConfigModal(true);
   };
@@ -98,32 +84,10 @@ const MyDevices: React.FC<MyDevicesProps> = ({ onClose }) => {
           </div>
           <div>
             <h1 className="my-devices-title">Thiết bị của tôi</h1>
-            <p className="my-devices-subtitle">
-              {isViewer() ? 'Xem thông tin thiết bị IoT' : 'Quản lý tất cả thiết bị IoT của bạn'}
-            </p>
-            {isViewer() && (
-              <div style={{ 
-                marginTop: '0.5rem', 
-                padding: '0.5rem 1rem', 
-                backgroundColor: '#fef3c7', 
-                border: '1px solid #fbbf24', 
-                borderRadius: '0.375rem',
-                fontSize: '0.875rem',
-                color: '#92400e',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <span>Bạn đang ở chế độ xem. Chỉ có thể xem thông tin thiết bị.</span>
-              </div>
-            )}
+            <p className="my-devices-subtitle">Quản lý tất cả thiết bị IoT của bạn</p>
           </div>
         </div>
-        {/* Only show register button for Admin */}
-        {!showRegisterForm && isAdmin() && (
+        {!showRegisterForm && (
           <button className="btn-register-device" onClick={() => setShowRegisterForm(true)}>
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M8 2v12M2 8h12" />
@@ -323,29 +287,15 @@ const MyDevices: React.FC<MyDevicesProps> = ({ onClose }) => {
                       </svg>
                       Thông tin
                     </button>
-                    {/* Show delete button for Admin, or show disabled button with warning for Viewer */}
-                    {isAdmin() ? (
-                      <button
-                        className="device-action-btn device-action-delete"
-                        onClick={() => handleDelete(device)}
-                        title="Xóa"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M4 4h8v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4zM6 2h4M2 4h12" />
-                        </svg>
-                      </button>
-                    ) : (
-                      <button
-                        className="device-action-btn device-action-delete"
-                        onClick={() => handleDelete(device)}
-                        title="Xóa (Không có quyền)"
-                        style={{ opacity: 0.5, cursor: 'not-allowed' }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M4 4h8v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4zM6 2h4M2 4h12" />
-                        </svg>
-                      </button>
-                    )}
+                    <button
+                      className="device-action-btn device-action-delete"
+                      onClick={() => handleDelete(device)}
+                      title="Xóa"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M4 4h8v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4zM6 2h4M2 4h12" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               ))}

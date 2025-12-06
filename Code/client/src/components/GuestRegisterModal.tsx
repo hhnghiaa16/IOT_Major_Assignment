@@ -75,7 +75,7 @@ const GuestRegisterModal: React.FC<GuestRegisterModalProps> = ({ onClose }) => {
         email: formData.email,
         password: formData.password,
         name: formData.name,
-        type: 2, // Guest type
+        type: 1, // Viewer/Guest type (type 1 = Viewer, type 0 = Admin)
       };
 
       await authService.register(registerData);

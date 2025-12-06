@@ -6,7 +6,6 @@
 import React, { useState } from 'react';
 import '../styles/DeviceConfigModal.css';
 import { useDeviceConfig } from '../hooks/useDeviceConfig';
-import { useAuth } from '../hooks/useAuth';
 import { getDataTypeLabel, getPinTypeLabel } from '../utils/formatters';
 import type { DeviceConfigModalProps, DataType, PinType } from '../types';
 
@@ -14,7 +13,6 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
   const { configPins, loading, error, loadConfigPins, addPin, deletePin } = useDeviceConfig({
     deviceToken: device.device_token,
   });
-  const { isViewer } = useAuth();
 
   const [showAddPinForm, setShowAddPinForm] = useState(false);
   const [newPin, setNewPin] = useState({
@@ -29,11 +27,6 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
 
   const handleAddPin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Prevent Viewers from adding pins
-    if (isViewer()) {
-      alert('Bạn không có quyền thêm virtual pin. Chỉ admin mới có thể thực hiện thao tác này.');
-      return;
-    }
     setAddPinError(null);
 
     if (!newPin.pin_label.trim()) {
@@ -79,11 +72,6 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
   };
 
   const handleDeletePin = async (virtualPin: number) => {
-    // Prevent Viewers from deleting pins
-    if (isViewer()) {
-      alert('Bạn không có quyền xóa virtual pin. Chỉ admin mới có thể thực hiện thao tác này.');
-      return;
-    }
     try {
       await deletePin(virtualPin);
     } catch {
@@ -100,24 +88,6 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
             ×
           </button>
         </div>
-
-        {isViewer() && (
-          <div style={{
-            padding: '0.75rem 1rem',
-            backgroundColor: '#fef3c7',
-            borderBottom: '1px solid #fbbf24',
-            fontSize: '0.875rem',
-            color: '#92400e',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span>Bạn đang ở chế độ xem. Chỉ có thể xem thông tin virtual pin, không thể thêm hoặc xóa.</span>
-          </div>
-        )}
 
         <div className="device-config-modal-content">
           {loading ? (
@@ -158,17 +128,15 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
                             <td>{getDataTypeLabel(pin.data_type)}</td>
                             <td>{pin.ai_keywords || '-'}</td>
                             <td>
-                              {!isViewer() && (
-                                <button
-                                  className="btn-delete-pin"
-                                  onClick={() => handleDeletePin(pin.virtual_pin)}
-                                  title="Xóa"
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M4 4h8v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4zM6 2h4M2 4h12" />
-                                  </svg>
-                                </button>
-                              )}
+                              <button
+                                className="btn-delete-pin"
+                                onClick={() => handleDeletePin(pin.virtual_pin)}
+                                title="Xóa"
+                              >
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M4 4h8v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4zM6 2h4M2 4h12" />
+                                </svg>
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -178,9 +146,7 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
                 )}
               </div>
 
-              {!isViewer() && (
-                <>
-                  {!showAddPinForm ? (
+              {!showAddPinForm ? (
                     <div className="add-pin-button-container">
                       <button className="btn-add-pin" onClick={() => setShowAddPinForm(true)}>
                         + Thêm Virtual Pin mới
@@ -288,8 +254,6 @@ const DeviceConfigModal: React.FC<DeviceConfigModalProps> = ({ device, onClose }
                     </div>
                   </form>
                 </div>
-                  )}
-                </>
               )}
             </>
           )}

@@ -61,7 +61,7 @@ export const useLogin = (): UseLoginReturn => {
           email,
           password,
           name,
-          type: 1,
+          type: 0, // Admin type (type 0 = Admin, type 1 = Viewer/Guest)
         });
       }
 

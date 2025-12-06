@@ -16,14 +16,26 @@ import { useAuth } from '../hooks/useAuth';
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('Dashboard');
   const [pageKey, setPageKey] = useState<number>(0);
-  const { isLoggedIn, login, logout } = useAuth();
+  const { isLoggedIn, login, logout, isAdmin, user } = useAuth();
 
   // Force remount when page changes
   useEffect(() => {
     setPageKey((prev) => prev + 1);
   }, [currentPage]);
 
+  // Redirect Viewer away from MyDevices
+  useEffect(() => {
+    if (isLoggedIn && user && !isAdmin() && currentPage === 'MyDevices') {
+      setCurrentPage('Dashboard');
+    }
+  }, [isLoggedIn, user, currentPage, isAdmin]);
+
   const handleNavigate = (page: string) => {
+    // Prevent Viewer from accessing MyDevices
+    if (page === 'MyDevices' && !isAdmin()) {
+      setCurrentPage('Dashboard');
+      return;
+    }
     setCurrentPage(page);
   };
 
@@ -43,7 +55,7 @@ const App: React.FC = () => {
 
       <div className="container">
         {currentPage === 'MyDevices' ? (
-          <ProtectedRoute allowedRoles={['admin', 'viewer']}>
+          <ProtectedRoute allowedRoles={['admin']}>
             <MyDevices key={`my-devices-${pageKey}`} onClose={() => { }} />
           </ProtectedRoute>
         ) : currentPage === 'Dashboard' ? (
