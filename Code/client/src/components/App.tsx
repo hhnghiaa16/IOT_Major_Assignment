@@ -10,10 +10,11 @@ import Dashboard from './dashboard/Dashboard';
 import Login from './Login';
 import MyDevices from './MyDevices';
 import ChatPage from './ChatPage';
+import ProtectedRoute from './ProtectedRoute';
 import { useAuth } from '../hooks/useAuth';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState('MyDevices');
+  const [currentPage, setCurrentPage] = useState('Dashboard');
   const [pageKey, setPageKey] = useState<number>(0);
   const { isLoggedIn, login, logout } = useAuth();
 
@@ -22,11 +23,15 @@ const App: React.FC = () => {
     setPageKey((prev) => prev + 1);
   }, [currentPage]);
 
+  const handleNavigate = (page: string) => {
+    setCurrentPage(page);
+  };
+
   if (!isLoggedIn) {
     return (
       <div className="app">
         <div className="container">
-          <Login onLogin={login} />
+          <Login onLogin={(user) => login(user)} />
         </div>
       </div>
     );
@@ -34,15 +39,21 @@ const App: React.FC = () => {
 
   return (
     <div className="app">
-      <Header currentPage={currentPage} onNavigate={setCurrentPage} onLogout={logout} />
+      <Header currentPage={currentPage} onNavigate={handleNavigate} onLogout={logout} />
 
       <div className="container">
         {currentPage === 'MyDevices' ? (
-          <MyDevices key={`my-devices-${pageKey}`} onClose={() => { }} />
+          <ProtectedRoute allowedRoles={['admin', 'viewer']}>
+            <MyDevices key={`my-devices-${pageKey}`} onClose={() => { }} />
+          </ProtectedRoute>
         ) : currentPage === 'Dashboard' ? (
-          <Dashboard key={`dashboard-${pageKey}`} />
+          <ProtectedRoute allowedRoles={['admin', 'viewer']}>
+            <Dashboard key={`dashboard-${pageKey}`} />
+          </ProtectedRoute>
         ) : currentPage === 'Chat' ? (
-          <ChatPage key={`chat-${pageKey}`} />
+          <ProtectedRoute allowedRoles={['admin', 'viewer']}>
+            <ChatPage key={`chat-${pageKey}`} />
+          </ProtectedRoute>
         ) : null}
       </div>
     </div>

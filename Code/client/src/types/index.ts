@@ -26,7 +26,8 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  type?: number;
+  is_active?: boolean;
+  type?: number; // 0 = Admin, 1 = Viewer (Guest)
 }
 
 // ============================================

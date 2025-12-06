@@ -6,9 +6,12 @@
 import React from 'react';
 import '../styles/Header.css';
 import AccountDropdown from './AccountDropdown';
+import { useAuth } from '../hooks/useAuth';
 import type { HeaderProps } from '../types';
 
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogout }) => {
+  const { isAdmin } = useAuth();
+
   return (
     <header className="header">
       <div className="header-left">
@@ -25,6 +28,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogout }) =>
       {onLogout ? (
         <div className="header-right">
           <nav className="nav">
+            {/* Show MyDevices button for both Admin and Viewer */}
             <button
               onClick={() => onNavigate('MyDevices')}
               className={`nav-button ${currentPage === 'MyDevices' ? 'active' : ''}`}
@@ -57,6 +61,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, onLogout }) =>
         </div>
       ) : (
         <nav className="nav">
+          {/* Show MyDevices button for both Admin and Viewer */}
           <button
             onClick={() => onNavigate('MyDevices')}
             className={`nav-button ${currentPage === 'MyDevices' ? 'active' : ''}`}

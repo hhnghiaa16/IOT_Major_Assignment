@@ -7,6 +7,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import '../styles/AccountDropdown.css';
 import ProfileModal from './ProfileModal';
 import GuestRegisterModal from './GuestRegisterModal';
+import { useAuth } from '../hooks/useAuth';
 // Types
 interface User {
   id: number;
@@ -25,6 +26,7 @@ const AccountDropdown: React.FC<AccountDropdownProps> = ({ onLogout }) => {
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { isAdmin, user: authUser } = useAuth();
 
   // Load user from localStorage
   useEffect(() => {
@@ -37,6 +39,13 @@ const AccountDropdown: React.FC<AccountDropdownProps> = ({ onLogout }) => {
       }
     }
   }, []);
+
+  // Sync with auth user
+  useEffect(() => {
+    if (authUser) {
+      setUser(authUser);
+    }
+  }, [authUser]);
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -119,20 +128,23 @@ const AccountDropdown: React.FC<AccountDropdownProps> = ({ onLogout }) => {
               <span>Xem thông tin cá nhân</span>
             </button>
 
-            <button
-              className="account-menu-item"
-              onClick={() => {
-                setShowGuestModal(true);
-                setIsOpen(false);
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="8.5" cy="7" r="4" />
-                <path d="M20 8v6M23 11h-6" />
-              </svg>
-              <span>Tạo tài khoản cho guest</span>
-            </button>
+            {/* Only show Guest register option for Admin */}
+            {isAdmin() && (
+              <button
+                className="account-menu-item"
+                onClick={() => {
+                  setShowGuestModal(true);
+                  setIsOpen(false);
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="8.5" cy="7" r="4" />
+                  <path d="M20 8v6M23 11h-6" />
+                </svg>
+                <span>Tạo tài khoản cho guest</span>
+              </button>
+            )}
 
             <div className="account-menu-divider"></div>
 
