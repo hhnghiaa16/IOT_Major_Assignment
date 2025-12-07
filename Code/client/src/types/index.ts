@@ -70,6 +70,29 @@ export interface DeviceInfoResponse {
   message?: string;
 }
 
+export interface MasterDevice extends Device {
+  user_id: number;
+  device_token: string;
+  token_verify: string;
+}
+
+export interface SlaveDevice extends Device {
+  user_id: number;
+  device_token: string;
+}
+
+export interface MasterDeviceListResponse {
+  success: boolean;
+  devices?: MasterDevice[];
+  message?: string;
+}
+
+export interface SlaveDeviceListResponse {
+  success: boolean;
+  devices?: SlaveDevice[];
+  message?: string;
+}
+
 export interface RegisterDeviceRequest {
   device_name: string;
   device_type: 'MASTER' | 'SLAVE';

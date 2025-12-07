@@ -9,7 +9,7 @@ import Header from './Header';
 import Dashboard from './dashboard/Dashboard';
 import Login from './Login';
 import MyDevices from './MyDevices';
-import ChatPage from './ChatPage';
+import ChatPage from './chat/ChatPage';
 import OTALayout from './ota/OTALayout';
 import ProtectedRoute from './ProtectedRoute';
 import { useAuth } from '../hooks/useAuth';
