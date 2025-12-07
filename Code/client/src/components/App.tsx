@@ -10,6 +10,7 @@ import Dashboard from './dashboard/Dashboard';
 import Login from './Login';
 import MyDevices from './MyDevices';
 import ChatPage from './ChatPage';
+import OTALayout from './ota/OTALayout';
 import ProtectedRoute from './ProtectedRoute';
 import { useAuth } from '../hooks/useAuth';
 
@@ -23,16 +24,18 @@ const App: React.FC = () => {
     setPageKey((prev) => prev + 1);
   }, [currentPage]);
 
-  // Redirect Viewer away from MyDevices
+  // Redirect Viewer away from MyDevices and OTA
   useEffect(() => {
-    if (isLoggedIn && user && !isAdmin() && currentPage === 'MyDevices') {
-      setCurrentPage('Dashboard');
+    if (isLoggedIn && user && !isAdmin()) {
+      if (currentPage === 'MyDevices' || currentPage === 'OTA') {
+        setCurrentPage('Dashboard');
+      }
     }
   }, [isLoggedIn, user, currentPage, isAdmin]);
 
   const handleNavigate = (page: string) => {
-    // Prevent Viewer from accessing MyDevices
-    if (page === 'MyDevices' && !isAdmin()) {
+    // Prevent Viewer from accessing MyDevices and OTA
+    if ((page === 'MyDevices' || page === 'OTA') && !isAdmin()) {
       setCurrentPage('Dashboard');
       return;
     }
@@ -65,6 +68,10 @@ const App: React.FC = () => {
         ) : currentPage === 'Chat' ? (
           <ProtectedRoute allowedRoles={['admin', 'viewer']}>
             <ChatPage key={`chat-${pageKey}`} />
+          </ProtectedRoute>
+        ) : currentPage === 'OTA' ? (
+          <ProtectedRoute allowedRoles={['admin']}>
+            <OTALayout key={`ota-${pageKey}`} />
           </ProtectedRoute>
         ) : null}
       </div>
