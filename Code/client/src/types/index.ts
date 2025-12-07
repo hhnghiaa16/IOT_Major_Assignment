@@ -239,3 +239,28 @@ export interface BlockConfigPin {
   data_type?: string;
 }
 
+// ============================================
+// OTA TYPES
+// ============================================
+export interface OTAInfo {
+  is_updating: boolean;
+  on_progress: number;
+  auto_update: boolean;
+  lastVersion: string | null;
+  lastUpdate: string | null;
+  hasNewVersion: boolean;
+  error: string[];
+}
+
+export interface CheckOTAResponse {
+  success: boolean;
+  data?: OTAInfo;
+  message?: string;
+}
+
+export interface DeviceWithOTA extends Device {
+  otaInfo?: OTAInfo;
+  otaLoading?: boolean;
+  otaError?: string;
+}
+
