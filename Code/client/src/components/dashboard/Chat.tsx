@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../../styles/Chat.css';
+import apiClient from '../../services/apiClient';
+import deviceService from '../../services/deviceService';
+import type { Device } from '../../types';
 
 interface Message {
     role: 'user' | 'assistant' | 'system';
@@ -14,6 +17,22 @@ interface ChatResponse {
     message_count: number;
 }
 
+interface AIConfig {
+    id: number;
+    created_at: string;
+    style: string;
+    describe: string;
+    token_verify: string;
+    name: string;
+    user_id?: number;
+}
+
+interface AIConfigResponse {
+    success: boolean;
+    message: string;
+    data: AIConfig[];
+}
+
 const Chat: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -21,6 +40,8 @@ const Chat: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [clientId, setClientId] = useState<string>('');
+    const [aiName, setAiName] = useState('AI Support');
+    const [aiStyle, setAiStyle] = useState('Đang hoạt động');
 
     const fetchHistory = async (id: string) => {
         try {
@@ -38,7 +59,32 @@ const Chat: React.FC = () => {
         }
     };
 
-    // Initialize client_id
+    const getMasterDeviceToken = async (): Promise<string | null> => {
+        try {
+            const devices = await deviceService.getDevices();
+            const masterDevice = devices.find((device: Device) => device.device_type === 'MASTER' && device.token_verify);
+            return masterDevice?.token_verify || null;
+        } catch (error) {
+            console.error('Failed to get Master device:', error);
+            return null;
+        }
+    };
+
+    const fetchAIConfig = async (tokenVerify: string) => {
+        try {
+            const response = await apiClient.get<AIConfigResponse>(`/ai/config_ai?token_verify=${tokenVerify}`);
+            if (response.success && response.data && response.data.length > 0) {
+                // Lấy config mới nhất (đầu tiên trong mảng)
+                const latestConfig = response.data[0];
+                setAiName(latestConfig.name || 'AI Support');
+                setAiStyle(latestConfig.style || 'Đang hoạt động');
+            }
+        } catch (error) {
+            console.error('Failed to fetch AI config:', error);
+        }
+    };
+
+    // Initialize client_id, get Master device token and load AI config
     useEffect(() => {
         let storedClientId = localStorage.getItem('chat_client_id');
         if (!storedClientId) {
@@ -47,6 +93,17 @@ const Chat: React.FC = () => {
         }
         setClientId(storedClientId);
         fetchHistory(storedClientId);
+        
+        // Get Master device token_verify and load AI config
+        const initializeConfig = async () => {
+            const tokenVerify = await getMasterDeviceToken();
+            if (tokenVerify) {
+                await fetchAIConfig(tokenVerify);
+            } else {
+                console.warn('Không tìm thấy thiết bị Master');
+            }
+        };
+        initializeConfig();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -134,8 +191,8 @@ const Chat: React.FC = () => {
                                 <div className="chat-status-dot"></div>
                             </div>
                             <div className="chat-title">
-                                <h3>AI Support</h3>
-                                <p>Đang hoạt động</p>
+                                <h3>{aiName}</h3>
+                                <p>{aiStyle}</p>
                             </div>
                         </div>
                         <button className="chat-close-btn" onClick={() => setIsOpen(false)}>

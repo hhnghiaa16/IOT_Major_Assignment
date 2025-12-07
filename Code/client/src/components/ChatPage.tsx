@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../styles/ChatPage.css';
+import apiClient from '../services/apiClient';
+import deviceService from '../services/deviceService';
+import type { Device } from '../types';
 
 interface Message {
     role: 'user' | 'assistant' | 'system';
@@ -14,6 +17,22 @@ interface ChatResponse {
     message_count: number;
 }
 
+interface AIConfig {
+    id: number;
+    created_at: string;
+    style: string;
+    describe: string;
+    token_verify: string;
+    name: string;
+    user_id?: number;
+}
+
+interface AIConfigResponse {
+    success: boolean;
+    message: string;
+    data: AIConfig[];
+}
+
 const ChatPage: React.FC = () => {
     // Chat State
     const [messages, setMessages] = useState<Message[]>([]);
@@ -26,6 +45,8 @@ const ChatPage: React.FC = () => {
     const [aiName, setAiName] = useState('AI Support');
     const [aiStyle, setAiStyle] = useState('Thân thiện, nhiệt tình');
     const [systemPrompt, setSystemPrompt] = useState('Bạn là một trợ lý AI hữu ích.');
+    const [isSavingConfig, setIsSavingConfig] = useState(false);
+    const [masterTokenVerify, setMasterTokenVerify] = useState<string | null>(null);
 
     const fetchHistory = async (id: string) => {
         try {
@@ -42,7 +63,64 @@ const ChatPage: React.FC = () => {
         }
     };
 
-    // Initialize client_id
+    const getMasterDeviceToken = async (): Promise<string | null> => {
+        try {
+            const devices = await deviceService.getDevices();
+            const masterDevice = devices.find((device: Device) => device.device_type === 'MASTER' && device.token_verify);
+            return masterDevice?.token_verify || null;
+        } catch (error) {
+            console.error('Failed to get Master device:', error);
+            return null;
+        }
+    };
+
+    const fetchAIConfig = async (tokenVerify: string) => {
+        try {
+            const response = await apiClient.get<AIConfigResponse>(`/ai/config_ai?token_verify=${tokenVerify}`);
+            if (response.success && response.data && response.data.length > 0) {
+                // Lấy config mới nhất (đầu tiên trong mảng)
+                const latestConfig = response.data[0];
+                setAiName(latestConfig.name || 'AI Support');
+                setAiStyle(latestConfig.style || 'Thân thiện, nhiệt tình');
+                setSystemPrompt(latestConfig.describe || 'Bạn là một trợ lý AI hữu ích.');
+            }
+        } catch (error) {
+            console.error('Failed to fetch AI config:', error);
+        }
+    };
+
+    const saveAIConfig = async () => {
+        if (!masterTokenVerify) {
+            alert('Không tìm thấy thiết bị Master. Vui lòng đăng ký thiết bị Master trước.');
+            return;
+        }
+
+        setIsSavingConfig(true);
+        try {
+            const response = await apiClient.post<AIConfig[]>(
+                '/ai/config_ai',
+                {
+                    token_verify: masterTokenVerify,
+                    name: aiName,
+                    style: aiStyle,
+                    describe: systemPrompt
+                }
+            );
+            
+            if (response && response.length > 0) {
+                alert('Lưu cấu hình AI thành công!');
+            } else {
+                alert('Lưu cấu hình thất bại');
+            }
+        } catch (error) {
+            console.error('Failed to save AI config:', error);
+            alert('Lưu cấu hình thất bại. Vui lòng thử lại.');
+        } finally {
+            setIsSavingConfig(false);
+        }
+    };
+
+    // Initialize client_id, get Master device token and load AI config
     useEffect(() => {
         let storedClientId = localStorage.getItem('chat_client_id');
         if (!storedClientId) {
@@ -51,6 +129,18 @@ const ChatPage: React.FC = () => {
         }
         setClientId(storedClientId);
         fetchHistory(storedClientId);
+        
+        // Get Master device token_verify and load AI config
+        const initializeConfig = async () => {
+            const tokenVerify = await getMasterDeviceToken();
+            if (tokenVerify) {
+                setMasterTokenVerify(tokenVerify);
+                await fetchAIConfig(tokenVerify);
+            } else {
+                console.warn('Không tìm thấy thiết bị Master');
+            }
+        };
+        initializeConfig();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -160,13 +250,17 @@ const ChatPage: React.FC = () => {
                         placeholder="Nhập hướng dẫn cho AI..."
                     />
                 </div>
-                <button className="save-config-btn">
+                <button 
+                    className="save-config-btn"
+                    onClick={saveAIConfig}
+                    disabled={isSavingConfig}
+                >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
                         <polyline points="17 21 17 13 7 13 7 21" />
                         <polyline points="7 3 7 8 15 8" />
                     </svg>
-                    Lưu cấu hình
+                    {isSavingConfig ? 'Đang lưu...' : 'Lưu cấu hình'}
                 </button>
             </div>
 
