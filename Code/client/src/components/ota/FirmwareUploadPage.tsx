@@ -123,11 +123,20 @@ const FirmwareUploadPage: React.FC = () => {
 
     try {
       setUploading(true);
+      let versionPrefix = '';
+      if (formData.type === '0') {
+        versionPrefix = 'Master_';
+      } else if (formData.type === '1') {
+        versionPrefix = 'Slave_';
+      }
+
+      const finalVersion = `${versionPrefix}${formData.version}`;
+
       const data = new FormData();
       data.append('file', file);
       data.append('filename', formData.filename);
       data.append('change_log', formData.change_log);
-      data.append('version', formData.version);
+      data.append('version', finalVersion);
       data.append('type', formData.type);
 
       const response = await otaService.uploadFirmware(data);
@@ -302,16 +311,18 @@ const FirmwareUploadPage: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Type (1 : slave, 0 : master)</label>
-              <input
-                type="text"
+              <label className="form-label">Type</label>
+              <select
                 name="type"
                 className="form-input"
                 value={formData.type}
                 onChange={handleChange}
-                placeholder="e.g. ESP32"
                 required
-              />
+              >
+                <option value="" disabled>Select a type</option>
+                <option value="0">Master</option>
+                <option value="1">Slave</option>
+              </select>
             </div>
 
             <div className="form-group">
