@@ -12,13 +12,6 @@ interface GuestRegisterModalProps {
   onClose: () => void;
 }
 
-interface RegisterRequest {
-  email: string;
-  password: string;
-  name: string;
-  type: number;
-}
-
 const GuestRegisterModal: React.FC<GuestRegisterModalProps> = ({ onClose }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -71,14 +64,13 @@ const GuestRegisterModal: React.FC<GuestRegisterModalProps> = ({ onClose }) => {
 
     setLoading(true);
     try {
-      const registerData: RegisterRequest = {
+      const registerData = {
         email: formData.email,
         password: formData.password,
         name: formData.name,
-        type: 1, // Viewer/Guest type (type 1 = Viewer, type 0 = Admin)
       };
 
-      await authService.register(registerData);
+      await authService.registerViewer(registerData);
       
       setSuccess('Tạo tài khoản guest thành công!');
       

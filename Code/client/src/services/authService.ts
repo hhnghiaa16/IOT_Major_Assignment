@@ -4,7 +4,7 @@
  */
 
 import apiClient from './apiClient';
-import type { LoginRequest, RegisterRequest, AuthResponse } from '../types';
+import type { LoginRequest, RegisterRequest, RegisterViewerRequest, AuthResponse } from '../types';
 
 export const authService = {
   /**
@@ -25,6 +25,19 @@ export const authService = {
    */
   register: async (userData: RegisterRequest): Promise<AuthResponse> => {
     const response = await apiClient.post<AuthResponse>('/auth/register', userData);
+    
+    if (!response.access_token) {
+      throw new Error(response.message || 'Registration failed');
+    }
+    
+    return response;
+  },
+
+  /**
+   * Register new viewer/guest user
+   */
+  registerViewer: async (userData: RegisterViewerRequest): Promise<AuthResponse> => {
+    const response = await apiClient.post<AuthResponse>('/auth/register_viewer', userData);
     
     if (!response.access_token) {
       throw new Error(response.message || 'Registration failed');
