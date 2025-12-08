@@ -373,9 +373,9 @@ const DeviceUpdatePage: React.FC = () => {
         </button>
       </div>
       <div className="page-content">
-        {devices.length === 0 ? (
+        {devices.filter(device => device.connection_status === 'ONLINE').length === 0 ? (
           <div className="empty-container">
-            <p>Không có thiết bị nào</p>
+            <p>Không có thiết bị nào đang online</p>
           </div>
         ) : (
           <div className="devices-table-container">
@@ -391,7 +391,7 @@ const DeviceUpdatePage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {devices.map((device) => {
+                {devices.filter(device => device.connection_status === 'ONLINE').map((device) => {
                   const status = getStatusDisplay(device);
                   return (
                     <tr key={device.id}>

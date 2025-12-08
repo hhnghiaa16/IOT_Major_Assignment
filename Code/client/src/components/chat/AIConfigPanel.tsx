@@ -11,6 +11,8 @@ interface AIConfig {
     token_verify: string;
     name: string;
     user_id?: number;
+    charactor_voice?: string;
+    speed?: number;
 }
 
 interface AIConfigResponse {
@@ -27,8 +29,11 @@ const AIConfigPanel: React.FC<AIConfigPanelProps> = ({ onConfigChange }) => {
     const [aiName, setAiName] = useState('AI Support');
     const [aiStyle, setAiStyle] = useState('Thân thiện, nhiệt tình');
     const [systemPrompt, setSystemPrompt] = useState('Bạn là một trợ lý AI hữu ích.');
+    const [characterVoice, setCharacterVoice] = useState('myan');
+    const [speed, setSpeed] = useState(1);
     const [isSavingConfig, setIsSavingConfig] = useState(false);
     const [masterTokenVerify, setMasterTokenVerify] = useState<string | null>(null);
+    const [voiceList, setVoiceList] = useState<Record<string, string>>({});
 
     const getMasterDeviceToken = async (): Promise<string | null> => {
         try {
@@ -43,6 +48,17 @@ const AIConfigPanel: React.FC<AIConfigPanelProps> = ({ onConfigChange }) => {
         }
     };
 
+    const fetchVoiceList = async () => {
+        try {
+            const response = await apiClient.get<{ success: boolean; data: Record<string, string> }>('/ai/get_list_voice');
+            if (response.success && response.data) {
+                setVoiceList(response.data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch voice list:', error);
+        }
+    };
+
     const fetchAIConfig = async () => {
         try {
             const response = await apiClient.get<AIConfigResponse>('/ai/config_ai');
@@ -52,10 +68,14 @@ const AIConfigPanel: React.FC<AIConfigPanelProps> = ({ onConfigChange }) => {
                 const name = latestConfig.name || 'AI Support';
                 const style = latestConfig.style || 'Thân thiện, nhiệt tình';
                 const prompt = latestConfig.describe || 'Bạn là một trợ lý AI hữu ích.';
+                const voice = latestConfig.charactor_voice || 'myan';
+                const voiceSpeed = latestConfig.speed ?? 1;
 
                 setAiName(name);
                 setAiStyle(style);
                 setSystemPrompt(prompt);
+                setCharacterVoice(voice);
+                setSpeed(voiceSpeed);
 
                 // Notify parent component
                 if (onConfigChange) {
@@ -75,24 +95,26 @@ const AIConfigPanel: React.FC<AIConfigPanelProps> = ({ onConfigChange }) => {
 
         setIsSavingConfig(true);
         try {
-            const response = await apiClient.post<AIConfig[]>(
+            const response = await apiClient.post<{ success: boolean; message: string; data: AIConfig[] }>(
                 '/ai/config_ai',
                 {
                     token_verify: masterTokenVerify,
                     name: aiName,
                     style: aiStyle,
-                    describe: systemPrompt
+                    describe: systemPrompt,
+                    charactor_voice: characterVoice,
+                    speed: speed
                 }
             );
 
-            if (response && response.length > 0) {
+            if (response.success && response.data && response.data.length > 0) {
                 alert('Lưu cấu hình AI thành công!');
                 // Notify parent component
                 if (onConfigChange) {
                     onConfigChange(aiName, aiStyle);
                 }
             } else {
-                alert('Lưu cấu hình thất bại');
+                alert(response.message || 'Lưu cấu hình thất bại');
             }
         } catch (error) {
             console.error('Failed to save AI config:', error);
@@ -105,6 +127,9 @@ const AIConfigPanel: React.FC<AIConfigPanelProps> = ({ onConfigChange }) => {
     // Initialize config on mount
     useEffect(() => {
         const initializeConfig = async () => {
+            // Fetch voice list first
+            await fetchVoiceList();
+
             // Fetch AI config (uses JWT auth, no token needed)
             await fetchAIConfig();
 
@@ -159,6 +184,39 @@ const AIConfigPanel: React.FC<AIConfigPanelProps> = ({ onConfigChange }) => {
                     onChange={(e) => setSystemPrompt(e.target.value)}
                     placeholder="Nhập hướng dẫn cho AI..."
                 />
+            </div>
+
+            <div className="config-group">
+                <label className="config-label">Giọng nói</label>
+                <select
+                    className="config-select"
+                    value={characterVoice}
+                    onChange={(e) => setCharacterVoice(e.target.value)}
+                >
+                    {Object.entries(voiceList).map(([label, value]) => (
+                        <option key={value} value={value}>
+                            {label}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="config-group">
+                <label className="config-label">Tốc độ giọng nói ({speed}x)</label>
+                <input
+                    type="range"
+                    className="config-range"
+                    min="-3"
+                    max="3"
+                    step="0.1"
+                    value={speed}
+                    onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                />
+                <div className="config-range-labels">
+                    <span>Chậm (-3x)</span>
+                    <span>Bình thường (1x)</span>
+                    <span>Nhanh (3x)</span>
+                </div>
             </div>
 
             <button

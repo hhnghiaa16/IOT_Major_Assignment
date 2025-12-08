@@ -110,14 +110,14 @@ const FirmwareUploadPage: React.FC = () => {
         setFormData(prev => ({ ...prev, filename: selectedFile.name }));
       }
     } else {
-      alert('Please upload a .bin file');
+      alert('Vui lòng tải lên file .bin');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
-      alert('Please select a file');
+      alert('Vui lòng chọn file');
       return;
     }
 
@@ -141,7 +141,7 @@ const FirmwareUploadPage: React.FC = () => {
 
       const response = await otaService.uploadFirmware(data);
       if (response.success) {
-        alert('Firmware uploaded successfully!');
+        alert('Tải lên firmware thành công!');
         // Reset form
         setFile(null);
         setFormData({
@@ -153,26 +153,26 @@ const FirmwareUploadPage: React.FC = () => {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Upload failed');
+      alert(err instanceof Error ? err.message : 'Tải lên thất bại');
     } finally {
       setUploading(false);
     }
   };
 
   const formatDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return 'Never updated';
+    if (!dateString) return 'Chưa cập nhật';
     try {
       const date = new Date(dateString);
       // Calculate days ago
       const diffTime = Math.abs(new Date().getTime() - date.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      if (diffDays === 1) return '1 day ago';
-      if (diffDays < 30) return `${diffDays} days ago`;
+      if (diffDays === 1) return '1 ngày trước';
+      if (diffDays < 30) return `${diffDays} ngày trước`;
 
       return date.toLocaleDateString();
     } catch {
-      return 'Invalid date';
+      return 'Ngày không hợp lệ';
     }
   };
 
@@ -180,31 +180,31 @@ const FirmwareUploadPage: React.FC = () => {
     <div className="firmware-upload-page">
       <div className="page-header">
         <div className="page-header-left">
-          <h1 className="page-title">Firmware Management</h1>
-          <p className="page-description">Upload new firmware versions and track release history</p>
+          <h1 className="page-title">Quản lý Firmware</h1>
+          <p className="page-description">Tải lên phiên bản firmware mới và theo dõi lịch sử phát hành</p>
         </div>
         <button onClick={fetchDevicesAndOTAInfo} className="btn-refresh">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 8v5M21 8h-5M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L3 16M3 16v-5M3 16h5" />
           </svg>
-          Refresh
+          Làm mới
         </button>
       </div>
 
       <div className="firmware-main-content">
         {/* Left Side: Device Summary */}
         <div className="section-card">
-          <h3 className="section-title">Device Summary</h3>
-          <p className="section-description">Quick overview of connected devices</p>
+          <h3 className="section-title">Tổng quan thiết bị</h3>
+          <p className="section-description">Tổng quan nhanh về các thiết bị đã kết nối</p>
 
           <div className="device-list">
             {loading ? (
               <div className="loading-container">
                 <div className="spinner-small"></div>
-                <p>Loading devices...</p>
+                <p>Đang tải thiết bị...</p>
               </div>
             ) : devices.length === 0 ? (
-              <div className="empty-container">No devices found</div>
+              <div className="empty-container">Không tìm thấy thiết bị</div>
             ) : (
               devices.map(device => (
                 <div className="device-item" key={device.id}>
@@ -236,8 +236,8 @@ const FirmwareUploadPage: React.FC = () => {
 
         {/* Right Side: Upload Form */}
         <div className="section-card">
-          <h3 className="section-title">Upload New Firmware</h3>
-          <p className="section-description">Upload a .bin file to deploy to your devices</p>
+          <h3 className="section-title">Tải lên Firmware mới</h3>
+          <p className="section-description">Tải lên file .bin để triển khai cho thiết bị của bạn</p>
 
           <form className="upload-form" onSubmit={handleSubmit}>
             <div
@@ -278,40 +278,40 @@ const FirmwareUploadPage: React.FC = () => {
                       <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
                   </div>
-                  <p className="upload-text">Drag and drop .bin firmware file here</p>
-                  <p className="upload-subtext">or click to browse files</p>
+                  <p className="upload-text">Kéo và thả file firmware .bin vào đây</p>
+                  <p className="upload-subtext">hoặc nhấp để chọn file</p>
                 </>
               )}
             </div>
 
             <div className="form-group">
-              <label className="form-label">Filename</label>
+              <label className="form-label">Tên file</label>
               <input
                 type="text"
                 name="filename"
                 className="form-input"
                 value={formData.filename}
                 onChange={handleChange}
-                placeholder="e.g. firmware_v2.bin"
+                placeholder="ví dụ: firmware_v2.bin"
                 required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Version</label>
+              <label className="form-label">Phiên bản</label>
               <input
                 type="text"
                 name="version"
                 className="form-input"
                 value={formData.version}
                 onChange={handleChange}
-                placeholder="e.g. 2.4.1"
+                placeholder="ví dụ: 2.4.1"
                 required
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label">Type</label>
+              <label className="form-label">Loại</label>
               <select
                 name="type"
                 className="form-input"
@@ -319,20 +319,20 @@ const FirmwareUploadPage: React.FC = () => {
                 onChange={handleChange}
                 required
               >
-                <option value="" disabled>Select a type</option>
+                <option value="" disabled>Chọn loại</option>
                 <option value="0">Master</option>
                 <option value="1">Slave</option>
               </select>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Changelog</label>
+              <label className="form-label">Nhật ký thay đổi</label>
               <textarea
                 name="change_log"
                 className="form-textarea"
                 value={formData.change_log}
                 onChange={handleChange}
-                placeholder="Describe what's new in this version..."
+                placeholder="Mô tả những gì mới trong phiên bản này..."
                 required
               />
             </div>
@@ -341,7 +341,7 @@ const FirmwareUploadPage: React.FC = () => {
               {uploading ? (
                 <>
                   <div className="loading-spinner"></div>
-                  Uploading...
+                  Đang tải lên...
                 </>
               ) : (
                 <>
@@ -350,7 +350,7 @@ const FirmwareUploadPage: React.FC = () => {
                     <polyline points="17 8 12 3 7 8" />
                     <line x1="12" y1="3" x2="12" y2="15" />
                   </svg>
-                  Upload Firmware
+                  Tải lên Firmware
                 </>
               )}
             </button>
