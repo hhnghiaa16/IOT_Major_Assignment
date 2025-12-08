@@ -13,7 +13,7 @@ from app.services.mqtt_service import mqtt_service
 from app.services.conversation_service import conversation_service
 import httpx
 import asyncio
-wsURL = "ws://10.1.0.32:8000/audio_stream/ws/"
+wsURL = "ws://192.168.3.3:8000/audio_stream/ws/"
 router = APIRouter(prefix="/audio_stream", tags=["Audio Stream"])
 TAG = "AUDIO_STREAM"
 class AudioStreamRequest(BaseModel):

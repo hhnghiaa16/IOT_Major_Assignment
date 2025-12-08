@@ -37,7 +37,7 @@ class MqttDeviceCommand(BaseModel):
     token_verify: str
     virtual_pin: int
     value: float
-broker_host = '10.1.0.32'
+broker_host = '192.168.3.3'
 broker_port = 1883
 @router.get("/status", response_model=MQTTStatus)
 def get_mqtt_status():

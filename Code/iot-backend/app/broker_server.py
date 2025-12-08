@@ -107,12 +107,21 @@ class SimpleMQTTBroker:
         client_id = None
         print(TAG + f"🎯 Bắt đầu xử lý client {address}")
 
+        # Đặt timeout 45 giây (3x keep-alive mặc định 15s của MQTT)
+        # Nếu client không gửi gì trong 45s → coi như mất kết nối
+        client_socket.settimeout(45.0)
+
         try:
             while self.running:
-                # Nhận dữ liệu từ client - đây là socket.recv()
-                data = client_socket.recv(1024)
-                if not data:
-                    print(f"🔌 Client {address} đã ngắt kết nối (empty data)")
+                try:
+                    # Nhận dữ liệu từ client - đây là socket.recv()
+                    data = client_socket.recv(1024)
+                    if not data:
+                        print(f"🔌 Client {address} đã ngắt kết nối (empty data)")
+                        break
+                except socket.timeout:
+                    # Client không gửi gì trong 45s → mất kết nối
+                    print(f"⏰ Client {address} timeout (không nhận được ping trong 45s)")
                     break
                 # Parse MQTT packet - Giải mã "ngôn ngữ" MQTT
                 packet_type, payload = self.parse_mqtt_packet(data)
