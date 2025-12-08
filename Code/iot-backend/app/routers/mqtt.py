@@ -252,7 +252,7 @@ def send_device_command(
         
         success = mqtt_service.publish_message_CT(device_command.token_verify , device_command.virtual_pin, str(device_command.value))
         
-        if success:
+        if success is None:
             return {
                 "message": "Device command đã được gửi thành công",
                 "topic": TOPIC_CONTRO + device_command.token_verify + "/" + str(device_command.virtual_pin),
