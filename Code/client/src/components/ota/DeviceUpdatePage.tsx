@@ -31,13 +31,6 @@ const DeviceUpdatePage: React.FC = () => {
 
   useEffect(() => {
     fetchDevicesAndOTAInfo();
-
-    // Cleanup polling intervals on unmount
-    return () => {
-      Object.values(pollingIntervals).forEach((interval) => {
-        if (interval) clearInterval(interval);
-      });
-    };
   }, []);
 
   // Cleanup polling intervals when component unmounts
@@ -73,6 +66,7 @@ const DeviceUpdatePage: React.FC = () => {
               auto_update: otaInfo.auto_update ?? false,
               lastVersion: otaInfo.lastVersion ?? null,
               lastUpdate: otaInfo.lastUpdate ?? null,
+              currentVersion: otaInfo.currentVersion ?? null,
               hasNewVersion: otaInfo.hasNewVersion ?? false,
               error: Array.isArray(otaInfo.error) ? otaInfo.error : [],
             };
@@ -96,19 +90,7 @@ const DeviceUpdatePage: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return 'N/A';
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('vi-VN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      });
-    } catch {
-      return 'N/A';
-    }
-  };
+
 
   const getStatusDisplay = (device: DeviceWithOTA) => {
     // Check if device is currently updating (from polling)
@@ -127,9 +109,9 @@ const DeviceUpdatePage: React.FC = () => {
 
     // Kiểm tra lỗi trước
     if (Array.isArray(device.otaInfo.error) && device.otaInfo.error.length > 0) {
-      return { 
-        text: `Lỗi: ${device.otaInfo.error.join(', ')}`, 
-        className: 'status-error' 
+      return {
+        text: `Lỗi: ${device.otaInfo.error.join(', ')}`,
+        className: 'status-error'
       };
     }
 
@@ -167,7 +149,7 @@ const DeviceUpdatePage: React.FC = () => {
       // Đảm bảo xử lý đúng các thuộc tính từ API
       const hasNewVersion = otaInfo.hasNewVersion ?? false;
       const errorMessages = Array.isArray(otaInfo.error) ? otaInfo.error : [];
-      
+
       if (errorMessages.length > 0) {
         setCheckUpdateResult((prev) => ({
           ...prev,
@@ -404,7 +386,6 @@ const DeviceUpdatePage: React.FC = () => {
                   <th>Mã thiết bị</th>
                   <th>Vai trò</th>
                   <th>Phiên bản Firmware</th>
-                  <th>Cập nhật lần cuối</th>
                   <th>Trạng thái</th>
                   <th>Thao tác</th>
                 </tr>
@@ -424,21 +405,15 @@ const DeviceUpdatePage: React.FC = () => {
                       </td>
                       <td>
                         <span
-                          className={`role-badge ${
-                            device.device_type === 'MASTER' ? 'role-master' : 'role-slave'
-                          }`}
+                          className={`role-badge ${device.device_type === 'MASTER' ? 'role-master' : 'role-slave'
+                            }`}
                         >
                           {device.device_type}
                         </span>
                       </td>
                       <td>
                         <span className="firmware-version">
-                          {device.otaInfo?.lastVersion || 'N/A'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="last-updated">
-                          {formatDate(device.otaInfo?.lastUpdate)}
+                          {device.otaInfo?.currentVersion || 'N/A'}
                         </span>
                       </td>
                       <td>

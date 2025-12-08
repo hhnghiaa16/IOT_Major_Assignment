@@ -52,6 +52,7 @@ const FirmwareUploadPage: React.FC = () => {
               auto_update: otaInfo.auto_update ?? false,
               lastVersion: otaInfo.lastVersion ?? null,
               lastUpdate: otaInfo.lastUpdate ?? null,
+              currentVersion: otaInfo.currentVersion ?? null,
               hasNewVersion: otaInfo.hasNewVersion ?? false,
               error: Array.isArray(otaInfo.error) ? otaInfo.error : [],
             };
