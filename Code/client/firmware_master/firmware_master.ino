@@ -10,9 +10,9 @@
 #include "MicRecorder.h"
 #include "AudioPlayer.h"
 // #include "DHT.h"
-#define CLIENT_ID "066420c45a4e819437bbfbea63b83739"
-#define version  "Slave_1.0.1"
-#define OTA_SERVER_URL "http://192.168.3.3:8000/ota/get_info_update"
+#define CLIENT_ID "2c80d03e31ff68f4d1b0a2300f113a2e"
+#define version  "Master_1.0.2"
+#define OTA_SERVER_URL "http://10.1.0.32:8000/ota/get_info_update"
 // ======= Global References =======
 WiFiStation* wifi;
 MQTTProtocol* mqtt;
@@ -20,6 +20,9 @@ MQTTProtocol* mqtt;
 OTAUpdate* ota;
 MicRecorder* mic;           // Microphone recorder pointer
 AudioPlayer* audioPlayer;   // Audio player pointer
+volatile bool isProcessingVoice = false;  // Flag: đang xử lý voice (từ AU:OFF đến audio xong)
+volatile unsigned long processingVoiceStartTime = 0;  // Thời điểm bắt đầu xử lý voice
+const unsigned long VOICE_PROCESSING_TIMEOUT = 12000;  // Timeout 60 giây
 #define DHTPIN 5
 #define DHTTYPE DHT11
 // DHT dht(DHTPIN, DHTTYPE);
@@ -509,6 +512,28 @@ void micTask(void* parameter) {
             bool buttonPressed = BUTTON_ACTIVE_LOW ? (currentButtonState == LOW) : (currentButtonState == HIGH);
             
             if (buttonPressed && !mic->isRecording()) {
+                // Kiểm tra nếu đang phát audio thì không cho ghi âm
+                if (audioTaskHandle != NULL) {
+                    Serial.println("⚠️ [MicTask] Cannot record while audio is playing!");
+                    vTaskDelay(pdMS_TO_TICKS(100));  // Chờ một chút
+                    lastButtonState = currentButtonState;
+                    continue;  // Bỏ qua, không ghi âm
+                }
+                
+                // Kiểm tra nếu đang xử lý voice (STT + TTS) thì không cho ghi âm
+                if (isProcessingVoice) {
+                    // Check timeout - nếu quá 60 giây thì auto-reset
+                    if (millis() - processingVoiceStartTime > VOICE_PROCESSING_TIMEOUT) {
+                        Serial.println("⚠️ [MicTask] Voice processing timeout! Auto-resetting...");
+                        isProcessingVoice = false;
+                    } else {
+                        Serial.println("⚠️ [MicTask] Cannot record while processing voice!");
+                        vTaskDelay(pdMS_TO_TICKS(100));
+                        lastButtonState = currentButtonState;
+                        continue;
+                    }
+                }
+                
                 // Bắt đầu ghi âm
                 Serial.println("🎤 [MicTask] Button pressed - Starting recording...");
                 
@@ -544,6 +569,8 @@ void micTask(void* parameter) {
                 deviceData.isNC = true;
                 xQueueSendToFront(deviceDataQueue, &deviceData, pdMS_TO_TICKS(100));
                 mic->stopRecording();
+                isProcessingVoice = true;  // Bắt đầu xử lý voice (STT + TTS)
+                processingVoiceStartTime = millis();  // Ghi lại thời điểm bắt đầu
             }
         }
         
@@ -566,7 +593,7 @@ void audioPlaybackTask(void* parameter) {
     
     // Step 1: Fetch audio URL from server
    HTTPClient http;
-    String audioApiUrl = String("http://192.168.3.3:8000/audio_stream/get-audio-url?client_id=") + CLIENT_ID;
+    String audioApiUrl = String("http://10.1.0.32:8000/audio_stream/get-audio-url?client_id=") + CLIENT_ID;
 
     // tạo URL có params (encode nếu cần)
     // String url = audioApiUrl + "?client_id=" + CLIENT_ID;
@@ -612,7 +639,7 @@ void audioPlaybackTask(void* parameter) {
             audioPlayer = &AudioPlayer::getInstance();
             audioPlayer->begin();
         }
-        audioPlayer->setVolume(0.05);  // Giảm xuống 2% vì MAX98357A có gain 9dB cố định
+        audioPlayer->setVolume(0.5);  // Giảm xuống 2% vì MAX98357A có gain 9dB cố định
         // Start playing
         audioPlayer->play(audioUrl);
         
@@ -629,6 +656,7 @@ void audioPlaybackTask(void* parameter) {
     
     // Step 3: Cleanup and self-destruct
     Serial.println("🧹 [AudioTask] Cleaning up and exiting...");
+    isProcessingVoice = false;  // Cho phép ghi âm lại
     audioTaskHandle = NULL;  // Reset handle
     vTaskDelete(NULL);       // Self-destruct
 }

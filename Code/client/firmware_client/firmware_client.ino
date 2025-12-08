@@ -10,7 +10,7 @@
 #include "DHT.h"
 #define CLIENT_ID "066420c45a4e819437bbfbea63b83739"
 #define version  "Slave_1.0.1"
-#define OTA_SERVER_URL "http://192.168.3.102:8000/ota/get_info_update"
+#define OTA_SERVER_URL "http://10.1.0.32:8000/ota/get_info_update"
 // ======= Global References =======
 WiFiStation* wifi;
 MQTTProtocol* mqtt;
@@ -18,7 +18,7 @@ GPIOManager* gpio;
 OTAUpdate* ota;
 #define DHTPIN 5
 #define DHTTYPE DHT11
-// DHT dht(DHTPIN, DHTTYPE);
+DHT dht(DHTPIN, DHTTYPE);
 // ======= FreeRTOS Objects =======
 QueueHandle_t deviceDataQueue;
 QueueHandle_t commandQueue;
@@ -106,8 +106,9 @@ void setup() {
     // Initialize GPIO
     gpio->begin();
     gpio->setOutputPin(4, true);
+    gpio->setInputPin(5, false);
     gpio->saveGPIOConfig(); // luu cau hinh GPIO vao NVS
-    // dht.begin(); // chan 5 lam cam bien nhiet do 
+    dht.begin(); // chan 5 lam cam bien nhiet do 
 
     // Initialize OTA
     // Create FreeRTOS objects
@@ -169,8 +170,8 @@ void setup() {
     // Subscribe to MQTT topics
     // Mutex đã được xử lý bên trong mqtt->subscribe()
     // phải đăng kí các topic trước khi gửi nhận mới được .
-    mqtt->registerVirtualpin(REG_SS, 4);
-    mqtt->registerVirtualpin(REG_CT, 5);
+    mqtt->registerVirtualpin(REG_CT, 4);
+    mqtt->registerVirtualpin(REG_SS, 5);
     mqtt->registerVirtualpin(REG_NC, 0);
     // mqtt->subscribe("device/gpio");
     // mqtt->subscribe("device/led");
@@ -258,18 +259,19 @@ void ReadDataTask(void* parameter) {
     float t ;
     float h ;
     while (true) {
-        //  h = dht.readHumidity();
-        //  t = dht.readTemperature();
+         h = dht.readHumidity();
+         t = dht.readTemperature();
         //222222
         // Read sensors and send data
-        // DeviceData deviceData;
+        DeviceData deviceData;
         
-        // // Read digital pins
-        // deviceData.pin = 5;
-        // deviceData.VirtualPin = 5;
-        // deviceData.value = String(t);
-        // deviceData.timestamp = millis();
-        // xQueueSend(deviceDataQueue, &deviceData, pdMS_TO_TICKS(10));
+        // Read digital pins
+        deviceData.pin = 5;
+        deviceData.VirtualPin = 5;
+        snprintf(deviceData.value, MAX_VALUE_LEN, "%.2f", t);
+        deviceData.timestamp = millis();
+        deviceData.isNC = false;
+        xQueueSend(deviceDataQueue, &deviceData, pdMS_TO_TICKS(10));
         
         // sensorData.sensorName = "pin_4";
         // sensorData.value = String(gpio->readDigital(4));
