@@ -271,6 +271,7 @@ export interface OTAInfo {
   auto_update: boolean;
   lastVersion: string | null;
   lastUpdate: string | null;
+  currentVersion: string | null;
   hasNewVersion: boolean;
   error: string[];
 }
