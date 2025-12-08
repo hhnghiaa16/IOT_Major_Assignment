@@ -9,16 +9,20 @@ import type { DeviceCommandRequest, DeviceCommandResponse } from '../types';
 export const mqttService = {
   /**
    * Send device command via MQTT
+   * @returns Response with message confirming the value sent
    */
-  sendDeviceCommand: async (command: DeviceCommandRequest): Promise<void> => {
+  sendDeviceCommand: async (command: DeviceCommandRequest): Promise<DeviceCommandResponse> => {
     const response = await apiClient.post<DeviceCommandResponse>(
       '/mqtt/device-command',
       command
     );
-    
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to send device command');
+
+    // API trả về dạng { "message": "0.0", "topic": "..." }
+    if (response.message === undefined) {
+      throw new Error('Failed to send device command - no response message');
     }
+
+    return response;
   },
 };
 

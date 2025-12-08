@@ -3,7 +3,7 @@
  * Manages dashboard blocks and operations
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dashboardService from '../services/dashboardService';
 import mqttService from '../services/mqttService';
 import type { DashboardBlock } from '../types';
@@ -26,6 +26,9 @@ export const useDashboard = (): UseDashboardReturn => {
   const [error, setError] = useState<string | null>(null);
   const [togglingBlockId, setTogglingBlockId] = useState<number | null>(null);
 
+  // Flag để theo dõi lần load đầu tiên
+  const isInitialLoad = useRef(true);
+
   const normalizeValue = (value: unknown): number => {
     if (value === undefined || value === null) return 0;
     if (typeof value === 'string') {
@@ -35,6 +38,7 @@ export const useDashboard = (): UseDashboardReturn => {
     return Number(value) >= 1 ? 1 : 0;
   };
 
+  // Gửi lệnh bật tất cả đèn (chỉ dùng cho lần load đầu tiên)
   const initializeButtonsToOn = async (buttons: DashboardBlock[]): Promise<void> => {
     const initPromises = buttons.map(async (block) => {
       try {
@@ -61,16 +65,40 @@ export const useDashboard = (): UseDashboardReturn => {
         dashboardService.getBlocks(1),
       ]);
 
-      const buttonsWithDefaultValue = buttons.map((block) => ({
-        ...block,
-        value: 1,
-      }));
+      if (isInitialLoad.current) {
+        // Lần load đầu tiên: đặt tất cả về BẬT và gửi lệnh MQTT
+        const buttonsWithDefaultOn = buttons.map((block) => ({
+          ...block,
+          value: 1,
+        }));
 
-      setButtonBlocks(buttonsWithDefaultValue);
-      setChartBlocks(charts);
+        setButtonBlocks(buttonsWithDefaultOn);
+        setChartBlocks(charts);
 
-      if (buttons.length > 0) {
-        await initializeButtonsToOn(buttons);
+        if (buttons.length > 0) {
+          await initializeButtonsToOn(buttons);
+        }
+
+        // Đánh dấu đã load xong lần đầu
+        isInitialLoad.current = false;
+      } else {
+        // Các lần load sau: giữ nguyên trạng thái hiện tại của mỗi block
+        setButtonBlocks((prevBlocks) => {
+          // Tạo map từ prevBlocks để lookup nhanh
+          const prevBlockMap = new Map(prevBlocks.map(b => [b.id, b]));
+
+          return buttons.map((block) => {
+            const existingBlock = prevBlockMap.get(block.id);
+            return {
+              ...block,
+              // Giữ value cũ nếu block đã tồn tại, nếu không thì dùng value từ server
+              value: existingBlock !== undefined
+                ? existingBlock.value
+                : normalizeValue(block.value),
+            };
+          });
+        });
+        setChartBlocks(charts);
       }
     } catch (err) {
       const errorMessage = err instanceof Error
@@ -94,24 +122,25 @@ export const useDashboard = (): UseDashboardReturn => {
 
     setTogglingBlockId(block.id);
 
-    // Optimistically update UI
-    setButtonBlocks((prev) =>
-      prev.map((b) => (b.id === block.id ? { ...b, value: newValue } : b))
-    );
-
-    // Send command (don't wait for response)
     try {
-      await mqttService.sendDeviceCommand({
+      const response = await mqttService.sendDeviceCommand({
         token_verify: block.token_verify,
         virtual_pin: block.virtual_pin,
         value: newValue,
       });
+
+      // Chỉ cập nhật UI khi API trả về message khớp với value đã gửi
+      if (response.message) {
+        const responseValue = parseFloat(response.message);
+
+        if (responseValue === newValue) {
+          setButtonBlocks((prev) =>
+            prev.map((b) => (b.id === block.id ? { ...b, value: newValue } : b))
+          );
+        }
+      }
     } catch (err) {
       console.error('Error sending command:', err);
-      // Revert on error
-      setButtonBlocks((prev) =>
-        prev.map((b) => (b.id === block.id ? { ...b, value: currentValue } : b))
-      );
     } finally {
       setTogglingBlockId(null);
     }
