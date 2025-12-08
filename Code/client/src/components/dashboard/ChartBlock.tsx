@@ -13,7 +13,7 @@ const ChartBlock: React.FC<ChartBlockProps> = ({ block, onConfigure, onDelete })
     tokenVerify: block.token_verify,
     virtualPin: block.virtual_pin,
     limit: 10,
-    refreshInterval: 20000,
+    refreshInterval: 60000,
   });
 
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);

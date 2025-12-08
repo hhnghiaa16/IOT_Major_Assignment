@@ -35,13 +35,13 @@ export const useDashboard = (): UseDashboardReturn => {
     return Number(value) >= 1 ? 1 : 0;
   };
 
-  const initializeButtonsToOff = async (buttons: DashboardBlock[]): Promise<void> => {
+  const initializeButtonsToOn = async (buttons: DashboardBlock[]): Promise<void> => {
     const initPromises = buttons.map(async (block) => {
       try {
         await mqttService.sendDeviceCommand({
           token_verify: block.token_verify,
           virtual_pin: block.virtual_pin,
-          value: 0,
+          value: 1,
         });
       } catch (err) {
         console.error(`Error initializing block ${block.id}:`, err);
@@ -63,18 +63,18 @@ export const useDashboard = (): UseDashboardReturn => {
 
       const buttonsWithDefaultValue = buttons.map((block) => ({
         ...block,
-        value: 0,
+        value: 1,
       }));
 
       setButtonBlocks(buttonsWithDefaultValue);
       setChartBlocks(charts);
 
       if (buttons.length > 0) {
-        await initializeButtonsToOff(buttons);
+        await initializeButtonsToOn(buttons);
       }
     } catch (err) {
-      const errorMessage = err instanceof Error 
-        ? err.message 
+      const errorMessage = err instanceof Error
+        ? err.message
         : 'Lỗi khi tải dữ liệu';
       setError(errorMessage);
     } finally {
@@ -127,8 +127,8 @@ export const useDashboard = (): UseDashboardReturn => {
       await loadAllBlocks();
       alert('Đã xóa block thành công');
     } catch (err) {
-      const errorMessage = err instanceof Error 
-        ? err.message 
+      const errorMessage = err instanceof Error
+        ? err.message
         : 'Lỗi khi xóa block';
       alert(errorMessage);
     }
