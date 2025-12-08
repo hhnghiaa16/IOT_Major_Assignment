@@ -214,6 +214,9 @@ Quy tắc khác:
             - Chỉ đưa ra câu trả lời xác nhận hành động SAU KHI tool đã chạy xong và trả về kết quả (ở lượt chạy tiếp theo).
             - Nếu Response có chứa tool_calls thì content phải để trống.
 
+            4. Lưu ý khi được yêu cầu hiện danh sách người dùng:
+            - Chỉ liệt kê tên người dùng, không liệt kê lại email của người dùng trong hệ thống. Cố gắng tránh các kí tự đặc biệt hoặc các kí tự người bình thường không đọc.
+
             HÃY NHỚ: Bạn đang nói chuyện bằng giọng nói, hãy trả lời sao cho nghe tự nhiên nhất!
             """
 
