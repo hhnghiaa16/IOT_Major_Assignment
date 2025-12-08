@@ -560,7 +560,7 @@ String OTAUpdate::Getinfo4mqtt(){
     hasNewVersion();
     // Build result
     return "OTA:INFO@" + lastVersion + "@" + lastUpdate + "@" + 
-           String(autoUpdateEnabled ? 1 : 0) + "@" + String(isNewVersion ? 1 : 0);
+    String(autoUpdateEnabled ? 1 : 0) + "@" + String(isNewVersion ? 1 : 0) + "@" + currentVersion;
 }
 // Print OTA info
 void OTAUpdate::printInfo() {

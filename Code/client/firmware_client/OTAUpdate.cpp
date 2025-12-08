@@ -172,6 +172,7 @@ bool OTAUpdate::checkForUpdate(String& newVersion, String& downloadUrl) {
         // Lấy các trường từ JSON (theo mẫu bạn cung cấp)
         String brokerServer = doc["broker_server"] | "";
         int    brokerPort   = doc["broker_port"] | 0;
+        String wsURL = doc["ws_url"] | "";
 
         String masterLink    = doc["master_link"] | "";
         String masterVersion = doc["master_version"] | "";
@@ -179,11 +180,12 @@ bool OTAUpdate::checkForUpdate(String& newVersion, String& downloadUrl) {
         String slaveLink     = doc["slave_link"] | "";
         String slaveVersion  = doc["slave_version"] | "";
 
-        savemqttInfo(brokerServer , brokerPort , clientID);
+        savemqttInfo(brokerServer , brokerPort , wsURL, clientID);
          // In log chi tiết
         Serial.println("🎉 [OTA] Update info received:");
         Serial.printf("   📌 Broker server: %s\n", brokerServer.c_str());
         Serial.printf("   📌 Broker port: %d\n", brokerPort);
+        Serial.printf("   📌 wsURL: %s\n", wsURL.c_str());
         Serial.printf("   📌 Master version: %s\n", masterVersion.c_str());
         Serial.printf("   📌 Master link: %s\n", masterLink.c_str());
         Serial.printf("   📌 Slave version: %s\n", slaveVersion.c_str());
@@ -236,11 +238,13 @@ bool OTAUpdate::checkForUpdate(String& newVersion, String& downloadUrl) {
         return false;
     }
 }
-void OTAUpdate::savemqttInfo(String brokerServer , int brokerPort , String clientID) {
+void OTAUpdate::savemqttInfo(String brokerServer , int brokerPort ,String wsURL, String clientID) {
     Settings settings("mqtt", true);
+
     settings.setString("broker", brokerServer);
     settings.setInt("port", brokerPort);
     settings.setString("clientId", clientID);
+    settings.setString("url", wsURL);
 }
 // Download and update firmware
 bool OTAUpdate::downloadAndUpdate(const String& url) {
@@ -556,7 +560,7 @@ String OTAUpdate::Getinfo4mqtt(){
     hasNewVersion();
     // Build result
     return "OTA:INFO@" + lastVersion + "@" + lastUpdate + "@" + 
-           String(autoUpdateEnabled ? 1 : 0) + "@" + String(isNewVersion ? 1 : 0);
+    String(autoUpdateEnabled ? 1 : 0) + "@" + String(isNewVersion ? 1 : 0) + "@" + currentVersion;
 }
 // Print OTA info
 void OTAUpdate::printInfo() {

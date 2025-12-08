@@ -271,7 +271,7 @@ void MicRecorder::stopRecording() {
     delay(100);
     
     // Disconnect and cleanup
-    disconnectWebSocket();
+    // disconnectWebSocket();
     deinitI2S();
     
     unsigned long duration = millis() - recordStartTime;

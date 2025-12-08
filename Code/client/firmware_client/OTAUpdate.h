@@ -54,7 +54,7 @@ private:
     
     // Private constructor for Singleton
     OTAUpdate();
-    void savemqttInfo(String brokerServer , int brokerPort , String clientID);
+    void savemqttInfo(String brokerServer , int brokerPort , String wsURL , String clientID);
     /**
      * @brief Lấy thông tin firmware mới từ server
      * @param newVersion Output: Phiên bản mới
