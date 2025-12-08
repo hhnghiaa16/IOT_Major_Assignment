@@ -9,6 +9,7 @@ from app.middleware.auth import get_current_device, get_current_user
 from app.routers.mqtt import broker_host , broker_port
 from app.services.mqtt_service import mqtt_service
 from time import sleep
+from app.websockets.audio_stream import wsURL
 # --- Khởi tạo Router ---
 router = APIRouter(
     prefix="/ota",
@@ -193,6 +194,7 @@ async def get_info_update(
             "success": True,
             "broker_server": broker_host,
             "broker_port": broker_port,
+            "ws_url": wsURL,
             "master_link": master_link,
             "master_version": master_version,
             "slave_link": slave_link,
@@ -227,7 +229,7 @@ def check_info_ota(data: PostInfoOTA , current_user: dict = Depends(get_current_
             }
         if data.type == 0:
             mqtt_service.publish_message_NC(data.client_id, "OTA:CK")
-            sleep(0.2)
+            sleep(1)
             response = mqtt_service.client_ota_data.get(data.client_id)
             if response:
                 return {
@@ -241,7 +243,7 @@ def check_info_ota(data: PostInfoOTA , current_user: dict = Depends(get_current_
                 }
         elif data.type == 1:
             mqtt_service.publish_message_NC(data.client_id, "OTA:UP")
-            sleep(0.2)
+            sleep(1)
             response = mqtt_service.client_ota_data.get(data.client_id)
             if response:
                 return {

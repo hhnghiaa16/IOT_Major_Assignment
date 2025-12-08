@@ -127,6 +127,7 @@ class MQTTService:
                     "auto_update": None,
                     "lastVersion" : None , 
                     "lastUpdate" : None,
+                    "currentVersion" : None,
                     "hasNewVersion" : None,
                     "error" : []
                 }
@@ -273,7 +274,17 @@ class MQTTService:
                 # self.client_is_voice[client_id] = "ERROR"
                 print(TAG + f"loi roi ")
             elif(message.startswith("AU")):
-                self.client_is_voice[client_id] = message.split(":")[1] == "ON"
+                if message.split(":")[1] == "ON" :
+                    if self.client_is_voice.get(client_id , None) is None:
+                        self.client_is_voice[client_id] = 1
+                    else:
+                        self.client_is_voice[client_id] += 1
+                else:
+                    if self.client_is_voice.get(client_id , None) is None:
+                        self.client_is_voice[client_id] = 0
+                    else:
+                        self.client_is_voice[client_id] += 1
+                print(TAG + f"client_is_voice: {self.client_is_voice[client_id]}")
             elif(message.startswith("OTA")):
                 self.handle_ota(client_id , message)
                 
@@ -323,6 +334,7 @@ class MQTTService:
                         "auto_update" : data['auto_update'],
                         "lastVersion" : data['lastVersion'],
                         "lastUpdate" : data['lastUpdate'],
+                        "currentVersion" : data['currentVersion'],
                         "hasNewVersion" : data['hasNewVersion'],
                         "error" : []
                     }
@@ -334,6 +346,7 @@ class MQTTService:
                         "auto_update" : data['auto_update'],
                         "lastVersion" : data['lastVersion'],
                         "lastUpdate" : data['lastUpdate'],
+                        "currentVersion" : data['currentVersion'],
                         "hasNewVersion" : data['hasNewVersion'],
                         "error" : message.split('@')[1]
                     }
@@ -349,6 +362,7 @@ class MQTTService:
                         "lastVersion" : None if message[1] == 'unknown' else message[1],
                         "lastUpdate" : None if message[2] == 'unknown' else message[2],
                         "hasNewVersion" : message[4] == '1',
+                        "currentVersion" : message[5],
                         "error" : data['error']
                     }
        

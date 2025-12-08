@@ -13,7 +13,7 @@ from app.services.mqtt_service import mqtt_service
 from app.services.conversation_service import conversation_service
 import httpx
 import asyncio
-
+wsURL = "ws://10.1.0.32:8000/audio_stream/ws/"
 router = APIRouter(prefix="/audio_stream", tags=["Audio Stream"])
 TAG = "AUDIO_STREAM"
 class AudioStreamRequest(BaseModel):
@@ -34,59 +34,89 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     print(f"{TAG} CONNECTION: Client {client_id} đã kết nối.")
     
     # Khởi tạo STT system cho client này
-    stt_system = STTSystem(max_workers=1, token_master=client_id)
-    chunk_count = 0
-    
-    try:
-        while True:
-            # Kiểm tra trạng thái voice từ MQTT
-            if client_id in mqtt_service.client_is_voice and mqtt_service.client_is_voice[client_id]:
-                # Client đang gửi audio
-                data = await websocket.receive_bytes()
+    print(f"{TAG} Client {client_id}:  mqtt_service.client_is_voice :  {mqtt_service.client_is_voice}")
+    if (client_id not in mqtt_service.client_is_voice) or  (mqtt_service.client_is_voice[client_id] == 1) or (mqtt_service.client_is_voice[client_id] == 0):
+        stt_system = STTSystem(max_workers=1, token_master=client_id)
+        chunk_count = 0
+        
+        try:
+            while True:
+                # Kiểm tra trạng thái voice từ MQTT
+                if client_id in mqtt_service.client_is_voice and mqtt_service.client_is_voice[client_id] > 1 :
+                    text = stt_system.get_result_text()
+                    if not text or text.strip() == "":
+                        text = "Không nhận diện được giọng nói"
+                    
+                    print(f"{TAG} STT Result: {text} + chunk_count: {chunk_count}")
+                    
+                    # Gửi kết quả về client
+                    await websocket.send_text(text)
+                    await websocket.close()
+                    result = await conversation_service.chat(client_id, text)
+                    print(f"{TAG} [Client: {client_id}] Result: {result['response']}")
+                    final_audio_url = await get_audio_url_async(result['response'])
+                    with list_audio_url_lock:
+                        list_audio_url[client_id] = final_audio_url.replace("https://", "http://")
+                        mqtt_service.publish_message_NC(client_id, "WAV:RD")
+                    print(f"{TAG} [Client: {client_id}] Final Audio URL: {final_audio_url}")
+                    mqtt_service.client_is_voice[client_id] = 0
+                    return
+                try:
+                    # Nhận data với timeout 0.5 giây để có thể kiểm tra điều kiện
+                    data = await asyncio.wait_for(
+                        websocket.receive_bytes(),
+                        timeout=0.5
+                    )
+                except asyncio.TimeoutError:
+                    # Timeout → quay lại đầu vòng lặp để kiểm tra client_is_voice > 1
+                    continue
+                    
                 chunk_count += 1
                 
-                # ✅ FIX: Xử lý audio chunk ĐÚNG CÁCH
-                # Sử dụng asyncio.to_thread() để chạy sync function trong thread pool
+                # Xử lý audio chunk
+                print(f"{TAG} Client {client_id}: Nhận được data  : {chunk_count} ")
                 await asyncio.to_thread(stt_system.process_chunk, data)
-            else:
-                # Client ngừng gửi audio, lấy kết quả STT
-                # print(f"{TAG} Client {client_id}: Kết thúc ghi âm, đang lấy kết quả...")
                 
-                text = stt_system.get_result_text()
-                
-                if not text or text.strip() == "":
-                    text = "Không nhận diện được giọng nói"
-                
-                print(f"{TAG} STT Result: {text} + chunk_count: {chunk_count}")
-                
-                # Gửi kết quả về client
-                await websocket.send_text(text)
+        except WebSocketDisconnect:
+            print(f"{TAG} CONNECTION: Client {client_id} đã ngắt kết nối.")
+            text = stt_system.get_result_text()
+                    
+            if not text or text.strip() == "":
+                text = "Không nhận diện được giọng nói"
+            
+            print(f"{TAG} STT Result: {text} + chunk_count: {chunk_count}")
+                    
+            # Gửi kết quả về client
+            # await websocket.send_text(text)
+            # await websocket.close()
+            result = await conversation_service.chat(client_id, text)
+            print(f"{TAG} [Client: {client_id}] Result: {result['response']}")
+            final_audio_url = await get_audio_url_async(result['response'])
+            with list_audio_url_lock:
+                list_audio_url[client_id] = final_audio_url.replace("https://", "http://")
+                mqtt_service.publish_message_NC(client_id, "WAV:RD")
+            print(f"{TAG} [Client: {client_id}] Final Audio URL: {final_audio_url}")
+            # Lấy kết quả cuối cùng nếu có
+            final_transcript = stt_system.get_result_text()
+            if final_transcript:
+                print(f"{TAG} WEB SOCKET DISCONNECT FINAL TRANSCRIPT: {final_transcript}")
+            mqtt_service.client_is_voice[client_id] = 0
+            
+        except Exception as e:
+            print(f"{TAG} ERROR: Lỗi với client {client_id}: {e}")
+            import traceback
+            traceback.print_exc()
+            mqtt_service.client_is_voice[client_id] = 0
+            try:
                 await websocket.close()
-                result = await conversation_service.chat(client_id, text)
-                print(f"{TAG} [Client: {client_id}] Result: {result['response']}")
-                final_audio_url = await get_audio_url_async(result['response'])
-                with list_audio_url_lock:
-                    list_audio_url[client_id] = final_audio_url.replace("https://", "http://")
-                    mqtt_service.publish_message_NC(client_id, "AU:ON")
-                print(f"{TAG} [Client: {client_id}] Final Audio URL: {final_audio_url}")
-                return
-                
-    except WebSocketDisconnect:
-        print(f"{TAG} CONNECTION: Client {client_id} đã ngắt kết nối.")
-        
-        # Lấy kết quả cuối cùng nếu có
-        final_transcript = stt_system.get_result_text()
-        if final_transcript:
-            print(f"{TAG} WEB SOCKET DISCONNECT FINAL TRANSCRIPT: {final_transcript}")
-    
-    except Exception as e:
-        print(f"{TAG} ERROR: Lỗi với client {client_id}: {e}")
-        import traceback
-        traceback.print_exc()
-        try:
-            await websocket.close()
-        except:
-            pass
+            except:
+                pass
+    else:
+        # Client ngừng gửi audio, lấy kết quả STT
+        print(f"{TAG} Client {client_id}: Kết thúc ghi âm, đang lấy kết quả...")
+        await websocket.send_text("Kết thúc ghi âm, đang lấy kết quả...")
+        await websocket.close()
+        return
 fpt_api_url = 'https://api.fpt.ai/hmi/tts/v5'
 api_key = 'FQMvO5Pw87mBIYxO5oKwjsAuTY25b8sH'
 async def get_audio_url_async(text: str):
@@ -162,3 +192,25 @@ async def get_audio_url_endpoint(client_id: str):
             "success": True,
             "audio_url": final_audio_url
         }
+class TestAudioRequest(BaseModel):
+    client_id: str
+    text: str
+
+@router.post("/testaudio" , response_model= dict)
+async def test_audio_endpoint(request: TestAudioRequest):
+    """
+    Endpoint này nhận văn bản, tạo audio và trả về URL để stream.
+    Toàn bộ quá trình xử lý là bất đồng bộ.
+    """
+    result = await conversation_service.chat(request.client_id, request.text)
+    print(f"{TAG} [Client: {request.client_id}] Result: {result['response']}")
+    final_audio_url = await get_audio_url_async(result['response'])
+    with list_audio_url_lock:
+        list_audio_url[request.client_id] = final_audio_url.replace("https://", "http://")
+        mqtt_service.publish_message_NC(request.client_id, "WAV:RD")
+    print(f"{TAG} [Client: {request.client_id}] Final Audio URL: {final_audio_url}")
+    return {
+        "success": True, 
+        "message": "Test audio thành công",
+        "audio_url": final_audio_url
+    }
