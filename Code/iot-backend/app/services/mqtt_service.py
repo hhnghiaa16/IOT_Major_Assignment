@@ -162,6 +162,8 @@ class MQTTService:
             data={"connection_status": "OFFLINE"},
             filters={"token_verify": client_id}
         )
+        self.client_is_voice.pop(client_id)
+        self.client_ota_data.pop(client_id)
         if not result :
             print(TAG + f'Khong the chuyen thiet bi sang OFF')
 
@@ -284,7 +286,7 @@ class MQTTService:
                         self.client_is_voice[client_id] = 0
                     else:
                         self.client_is_voice[client_id] += 1
-                print(TAG + f"client_is_voice: {self.client_is_voice[client_id]}")
+                print(TAG + f"client_is_voice {client_id}: {self.client_is_voice[client_id]}")
             elif(message.startswith("OTA")):
                 self.handle_ota(client_id , message)
                 

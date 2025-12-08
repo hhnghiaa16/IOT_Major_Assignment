@@ -36,6 +36,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     # Khởi tạo STT system cho client này
     print(f"{TAG} Client {client_id}:  mqtt_service.client_is_voice :  {mqtt_service.client_is_voice}")
     if (client_id not in mqtt_service.client_is_voice) or  (mqtt_service.client_is_voice[client_id] == 1) or (mqtt_service.client_is_voice[client_id] == 0):
+        print(f"{TAG} Client {client_id}:  KHởi động thu âm ")
         stt_system = STTSystem(max_workers=1, token_master=client_id)
         chunk_count = 0
         
@@ -54,7 +55,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     await websocket.close()
                     result = await conversation_service.chat(client_id, text)
                     print(f"{TAG} [Client: {client_id}] Result: {result['response']}")
-                    final_audio_url = await get_audio_url_async(result['response'])
+                    final_audio_url = await get_audio_url_async(result['response'] , client_id)
                     with list_audio_url_lock:
                         list_audio_url[client_id] = final_audio_url.replace("https://", "http://")
                         mqtt_service.publish_message_NC(client_id, "WAV:RD")
@@ -119,16 +120,22 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         return
 fpt_api_url = 'https://api.fpt.ai/hmi/tts/v5'
 api_key = 'FQMvO5Pw87mBIYxO5oKwjsAuTY25b8sH'
-async def get_audio_url_async(text: str):
+async def get_audio_url_async(text: str , client_id: str):
     """
     Hàm bất đồng bộ (non-blocking) để gọi API của FPT,
     chờ file sẵn sàng bằng cách polling và trả về URL cuối cùng.
     """
     # Bước 1: Gửi yêu cầu tạo audio đến FPT.AI (bất đồng bộ)
+    config_ai = db.execute_query(
+        table="agent_config",
+        operation="select",
+        filters={"token_verify": client_id}
+    )
+
     headers = {
         'api-key': api_key,
-        'speed': '0',
-        'voice': 'banmai',
+        'speed': str(config_ai[0]["speed"]),  # Convert sang string
+        'voice': config_ai[0]["charactor_voice"],
         'format': 'wav'
     }
     
@@ -137,7 +144,7 @@ async def get_audio_url_async(text: str):
         try:
             response = await client.post(fpt_api_url, data=text.encode('utf-8'), headers=headers)
             response.raise_for_status() # Tự động raise lỗi nếu có vấn đề (4xx, 5xx)
-        except httpx.RequestException as e:
+        except httpx.RequestError as e:
             raise HTTPException(status_code=500, detail=f"Lỗi khi gọi FPT.AI: {e}")
 
         result = response.json()

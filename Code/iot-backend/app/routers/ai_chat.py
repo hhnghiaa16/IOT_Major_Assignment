@@ -29,13 +29,35 @@ class ConfigAIRequest(BaseModel):
     name : str
     style: str
     describe: str
-
+    charactor_voice:str
+    speed : float
+list_voice = {
+    "Ban Mai": "banmai",
+    "Thúy Minh": "thuminh",
+    "My An": "myan",
+    "Gia Huy": "giahuy",
+    "Ngọc Lâm": "ngoclam",
+    "Lê Minh": "leminh",
+    "Minh Quang": "minhquang",
+    "Linh San": "linhsan",
+    "Lan Nhi": "lannhi"
+}
 @router.post("/config_ai")
 async def config_ai(request: ConfigAIRequest , current_user: dict = Depends(get_current_user)):
     """
     Config AI
     """
     try:
+        if request.charactor_voice not in list_voice.values():
+            return {
+                "success": False,
+                "message": "Giọng nói không hợp lệ"
+            }
+        if(request.speed > 3 or request.speed < -3 ):
+            return {
+                "success": False,
+                "message": "Tốc độ phải trong khoảng -3 đến 3"
+            }
         agent_config = db.execute_query(
             table="agent_config",
             operation="select",
@@ -48,7 +70,9 @@ async def config_ai(request: ConfigAIRequest , current_user: dict = Depends(get_
                 data={
                     "name": request.name,
                     "style": request.style,
-                    "describe": request.describe
+                    "describe": request.describe,
+                    "charactor_voice": request.charactor_voice,
+                    "speed": request.speed
                 },
                 filters={"token_verify": request.token_verify}
             )
@@ -61,16 +85,32 @@ async def config_ai(request: ConfigAIRequest , current_user: dict = Depends(get_
                     "name": request.name,
                     "style": request.style,
                     "describe": request.describe,
+                    "charactor_voice": request.charactor_voice,
+                    "speed": request.speed,
                     "user_id": current_user["id"]
                 }
             )
         conversation_service.clear_agent_config(request.token_verify)
         conversation_service.clear_conversation(request.token_verify)
-        return agent_config
+        return {
+            "success": True,
+            "message": "Cấu hình AI thành công",
+            "data": agent_config
+        }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+@router.get("/get_list_voice")
+async def get_voice():
+    """
+    Get list voice
+    """
+    return {
+        "success": True,
+        "message": "Lấy danh sách giọng nói thành công",
+        "data": list_voice
+    }
 @router.get("/config_ai")
 async def get_config_ai(current_user: dict = Depends(get_current_user)):
     """
