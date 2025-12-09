@@ -28,6 +28,7 @@ const DeviceUpdatePage: React.FC = () => {
   const [checkUpdateResult, setCheckUpdateResult] = useState<Record<number, CheckUpdateResult>>({});
   const [updatingDevices, setUpdatingDevices] = useState<Record<number, UpdatingDevice>>({});
   const [pollingIntervals, setPollingIntervals] = useState<Record<number, NodeJS.Timeout>>({});
+  const [pollingOTAInfo, setPollingOTAInfo] = useState<Record<number, NodeJS.Timeout>>({});
 
   useEffect(() => {
     fetchDevicesAndOTAInfo();
@@ -39,8 +40,11 @@ const DeviceUpdatePage: React.FC = () => {
       Object.values(pollingIntervals).forEach((interval) => {
         if (interval) clearInterval(interval);
       });
+      Object.values(pollingOTAInfo).forEach((interval) => {
+        if (interval) clearInterval(interval);
+      });
     };
-  }, [pollingIntervals]);
+  }, [pollingIntervals, pollingOTAInfo]);
 
   const fetchDevicesAndOTAInfo = async () => {
     try {
@@ -70,6 +74,12 @@ const DeviceUpdatePage: React.FC = () => {
               hasNewVersion: otaInfo.hasNewVersion ?? false,
               error: Array.isArray(otaInfo.error) ? otaInfo.error : [],
             };
+
+            // Start polling if currentVersion or lastVersion is still null
+            if (normalizedOtaInfo.currentVersion === null || normalizedOtaInfo.lastVersion === null) {
+              startPollingOTAInfo(device.id, device.token_verify);
+            }
+
             return { ...device, otaInfo: normalizedOtaInfo, otaLoading: false, otaError: undefined };
           } catch (err) {
             return {
@@ -90,6 +100,54 @@ const DeviceUpdatePage: React.FC = () => {
     }
   };
 
+  const startPollingOTAInfo = (deviceId: number, tokenVerify: string) => {
+    // Clear existing interval if any
+    if (pollingOTAInfo[deviceId]) {
+      clearInterval(pollingOTAInfo[deviceId]);
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const otaInfo = await otaService.checkOTAInfo(tokenVerify, 0);
+
+        const normalizedOtaInfo = {
+          is_updating: otaInfo.is_updating ?? false,
+          on_progress: typeof otaInfo.on_progress === 'number' ? otaInfo.on_progress : 0,
+          auto_update: otaInfo.auto_update ?? false,
+          lastVersion: otaInfo.lastVersion ?? null,
+          lastUpdate: otaInfo.lastUpdate ?? null,
+          currentVersion: otaInfo.currentVersion ?? null,
+          hasNewVersion: otaInfo.hasNewVersion ?? false,
+          error: Array.isArray(otaInfo.error) ? otaInfo.error : [],
+        };
+
+        // Update devices state with new OTA info
+        setDevices((prevDevices) =>
+          prevDevices.map((device) =>
+            device.id === deviceId
+              ? { ...device, otaInfo: normalizedOtaInfo, otaLoading: false, otaError: undefined }
+              : device
+          )
+        );
+
+        // Stop polling if both currentVersion and lastVersion are no longer null
+        if (normalizedOtaInfo.currentVersion !== null && normalizedOtaInfo.lastVersion !== null) {
+          clearInterval(interval);
+          setPollingOTAInfo((prev) => {
+            const newIntervals = { ...prev };
+            delete newIntervals[deviceId];
+            return newIntervals;
+          });
+        }
+      } catch (err) {
+        console.error('Error polling OTA info:', err);
+        // Continue polling even on error
+      }
+    }, 3000); // Poll every 3 seconds
+
+    setPollingOTAInfo((prev) => ({ ...prev, [deviceId]: interval }));
+  };
+
 
 
   const getStatusDisplay = (device: DeviceWithOTA) => {
@@ -104,7 +162,7 @@ const DeviceUpdatePage: React.FC = () => {
     }
 
     if (!device.otaInfo) {
-      return { text: 'Không xác định', className: 'status-unknown' };
+      return { text: 'Đang kiểm tra ...', className: 'status-unknown' };
     }
 
     // Kiểm tra lỗi trước
@@ -413,7 +471,9 @@ const DeviceUpdatePage: React.FC = () => {
                       </td>
                       <td>
                         <span className="firmware-version">
-                          {device.otaInfo?.currentVersion || 'N/A'}
+                          {device.otaInfo?.currentVersion === null
+                            ? 'Đang kiểm tra'
+                            : (device.otaInfo?.currentVersion || 'Đang kiểm tra...')}
                         </span>
                       </td>
                       <td>
